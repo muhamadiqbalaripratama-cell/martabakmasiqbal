@@ -1,0 +1,13 @@
+node_modules
+.vite
+# NOTE: 'dist' NOT excluded — Dockerfile.static needs it. Multi-stage
+# Dockerfile generates its own dist inside the build stage and ignores
+# any local one.
+.git
+.gitignore
+.DS_Store
+*.log
+tsconfig.tsbuildinfo
+Dockerfile
+docker-compose.yml
+README.md

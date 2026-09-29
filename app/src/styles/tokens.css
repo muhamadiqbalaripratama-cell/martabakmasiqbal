@@ -1,0 +1,138 @@
+:root {
+  --bg: #f4efe2;
+  --bg-2: #ece6d4;
+  --surface: #ffffff;
+  --surface-soft: #faf7ee;
+  --ink: #11241a;
+  --ink-2: #3a4a40;
+  --ink-3: #6c7a70;
+  --ink-4: #a4ad9d;
+  --hairline: #e3ddc9;
+  --hairline-2: #d4cdb5;
+
+  /* Brand */
+  --green: #1c5a35;
+  --green-2: #2c7a47;
+  --green-3: #4ea76a;
+  --green-soft: #dfe9d8;
+  --green-tint: #eef3e3;
+
+  --yellow: #f5c518;
+  --yellow-2: #ffd84a;
+  --yellow-soft: #fff1b8;
+
+  --danger: #c2452f;
+  --danger-soft: #f6dcd5;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  --shadow-sm: 0 1px 2px rgba(17, 36, 26, 0.04), 0 1px 1px rgba(17, 36, 26, 0.03);
+  --shadow-md: 0 6px 22px -8px rgba(17, 36, 26, 0.14), 0 2px 6px -2px rgba(17, 36, 26, 0.06);
+  --shadow-lg: 0 30px 60px -28px rgba(17, 36, 26, 0.32), 0 10px 24px -12px rgba(17, 36, 26, 0.18);
+
+  --font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: #0e1a13;
+  color: var(--ink);
+}
+
+button {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* The POS frame — fixed 1280×832 tablet landscape, scaled to viewport. */
+.pos-stage {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 30% 20%, #1a2e22, #0b130d 75%);
+  overflow: hidden;
+}
+
+.pos-frame {
+  width: 1280px;
+  height: 832px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  transform-origin: center center;
+}
+
+.pos {
+  width: 1280px;
+  height: 832px;
+  display: flex;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  position: relative;
+}
+
+.pos *::-webkit-scrollbar {
+  display: none;
+}
+.pos * {
+  scrollbar-width: none;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* App-level chrome (top right corner) */
+.dev-hint {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.04em;
+}

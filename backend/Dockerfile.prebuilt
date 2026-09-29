@@ -1,0 +1,24 @@
+# Alternatif Dockerfile untuk environment yang tidak punya akses npm registry
+# (VPS terisolasi, jaringan corporate dgn MITM cert, dll).
+#
+# Asumsi: dist/ dan node_modules/ sudah ada (di-build di mesin lokal).
+#
+# Cara pakai:
+#   npm install && npm run build
+#   docker build -f Dockerfile.prebuilt -t martabak-pos-api:latest .
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json* ./
+COPY node_modules ./node_modules
+COPY dist ./dist
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+USER node
+CMD ["node", "dist/index.js"]

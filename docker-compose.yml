@@ -1,0 +1,64 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: martabak-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-martabak_pos}
+      MYSQL_USER: ${MYSQL_USER:-pos}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pospass}
+    ports:
+      # Host:Container — host port 3321 untuk akses dari luar (mis. dbeaver)
+      - "3321:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - pos-net
+
+  api:
+    build:
+      context: ./backend
+    image: martabak-pos-api:latest
+    container_name: martabak-api
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-pos}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pospass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-martabak_pos}
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - pos-net
+
+  web:
+    build:
+      context: ./app
+    image: martabak-pos-web:latest
+    container_name: martabak-web
+    restart: unless-stopped
+    ports:
+      - "8899:80"
+    depends_on:
+      - api
+    networks:
+      - pos-net
+
+networks:
+  pos-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local

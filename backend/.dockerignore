@@ -1,0 +1,6 @@
+# Multi-stage Dockerfile builds dist + node_modules from scratch, so having
+# these in context just wastes a few seconds — not an error. Dockerfile.prebuilt
+# (the sandbox/offline workaround) needs them, so they are NOT excluded.
+.git
+.DS_Store
+*.log
