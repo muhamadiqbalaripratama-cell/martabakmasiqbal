@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
-import { BANK_TRANSFER, fmtAccountNo } from '../data/payment';
+import { BANK_TRANSFER, compressProofImage, fmtAccountNo } from '../data/payment';
 import { useApp, totalsFor } from '../state/store';
 
 // navigator.clipboard hanya tersedia di secure context (HTTPS/localhost).
@@ -31,9 +31,27 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export function ScreenTransfer() {
-  const { state, goto, submitOrder } = useApp();
+  const { state, goto, submitOrder, setTransferProof } = useApp();
   const { total } = totalsFor(state.lines);
+  const proof = state.transferProof;
   const [copied, setCopied] = useState<'account' | 'amount' | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setProcessing(true);
+    try {
+      setTransferProof(await compressProofImage(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal memproses gambar.');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handleCopy = async (what: 'account' | 'amount') => {
     const ok = await copyText(what === 'account' ? BANK_TRANSFER.accountNo : String(total));
@@ -43,9 +61,18 @@ export function ScreenTransfer() {
   };
 
   const handleConfirm = async () => {
-    await submitOrder();
-    goto('receipt');
+    if (!proof) {
+      setError('Upload bukti transfer terlebih dahulu.');
+      return;
+    }
+    setError(null);
+    // Beda dengan Tunai/QRIS: jangan lanjut ke struk kalau gagal tersimpan,
+    // supaya bukti transfer tidak hilang dari laporan.
+    if (await submitOrder()) goto('receipt');
+    else setError('Gagal menyimpan pesanan ke server. Periksa koneksi lalu coba lagi.');
   };
+
+  const canConfirm = Boolean(proof) && !state.submitting && !processing;
 
   return (
     <div className="pos">
@@ -53,7 +80,7 @@ export function ScreenTransfer() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar
           title={`Transfer Bank ${BANK_TRANSFER.bank}`}
-          subtitle={`Pesanan #${state.orderNo} · Menunggu transfer`}
+          subtitle={`Pesanan #${state.orderNo} · ${proof ? 'Bukti transfer siap' : 'Menunggu bukti transfer'}`}
           right={
             <Btn kind="ghost" icon="back" onClick={() => goto('pay-method')}>
               Ganti Metode
@@ -152,62 +179,153 @@ export function ScreenTransfer() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                Cara Pembayaran
+                Bukti Transfer
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-                Kasir cek mutasi rekening sebelum konfirmasi
+                Cek mutasi rekening {BANK_TRANSFER.bank}, lalu upload foto / screenshot bukti transfer
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { t: 'Buka m-BCA / myBCA / ATM', d: 'Atau aplikasi bank lain (transfer antarbank)' },
-                {
-                  t: `Transfer ke ${fmtAccountNo(BANK_TRANSFER.accountNo)}`,
-                  d: `Bank ${BANK_TRANSFER.bank}`,
-                },
-                { t: `Nominal ${fmtRp(total)}`, d: 'Pastikan nominal sama persis' },
-                { t: 'Tunjukkan bukti transfer ke kasir', d: 'Kasir mencocokkan dengan mutasi masuk' },
-              ].map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: 'var(--green-tint)',
-                      color: 'var(--green)',
-                      display: 'grid',
-                      placeItems: 'center',
-                      flexShrink: 0,
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {i + 1}
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                handleFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+
+            {proof ? (
+              <div
+                style={{
+                  borderRadius: 16,
+                  border: '1px solid var(--hairline)',
+                  background: 'var(--surface-soft)',
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                <img
+                  src={proof.dataUrl}
+                  alt="Bukti transfer"
+                  style={{
+                    width: '100%',
+                    height: 280,
+                    objectFit: 'contain',
+                    borderRadius: 10,
+                    background: '#fff',
+                    border: '1px solid var(--hairline)',
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="check" size={16} color="var(--green)" stroke={2.4} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {proof.fileName}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                      {Math.max(1, Math.round(proof.sizeBytes / 1024))} KB · siap disimpan
+                    </div>
                   </div>
-                  <div style={{ paddingTop: 3 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{s.t}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{s.d}</div>
-                  </div>
+                  <Btn kind="ghost" size="sm" onClick={() => fileInput.current?.click()}>
+                    Ganti
+                  </Btn>
+                  <Btn kind="danger" size="sm" icon="trash" onClick={() => setTransferProof(null)} aria-label="Hapus bukti" />
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInput.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  handleFile(e.dataTransfer.files?.[0]);
+                }}
+                disabled={processing}
+                style={{
+                  height: 280,
+                  borderRadius: 16,
+                  border: `2px dashed ${dragOver ? 'var(--green)' : 'var(--hairline-2)'}`,
+                  background: dragOver ? 'var(--green-tint)' : 'var(--surface-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  cursor: processing ? 'wait' : 'pointer',
+                  color: 'var(--ink-2)',
+                  font: 'inherit',
+                }}
+              >
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 14,
+                    background: 'var(--green-tint)',
+                    color: 'var(--green)',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Icon name="upload" size={24} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>
+                  {processing ? 'Memproses gambar…' : 'Upload Bukti Transfer'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                  Klik atau seret gambar ke sini · JPG, PNG, WEBP
+                </div>
+              </button>
+            )}
+
+            {error && (
+              <div
+                role="alert"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: 'var(--danger-soft)',
+                  color: 'var(--danger)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {error}
+              </div>
+            )}
 
             <div style={{ flex: 1 }} />
             <Btn
               kind="primary"
               size="lg"
-              disabled={state.submitting}
+              disabled={!canConfirm}
               onClick={handleConfirm}
               style={{
                 width: '100%',
                 justifyContent: 'space-between',
-                opacity: state.submitting ? 0.55 : 1,
-                cursor: state.submitting ? 'not-allowed' : 'pointer',
+                opacity: canConfirm ? 1 : 0.55,
+                cursor: canConfirm ? 'pointer' : 'not-allowed',
               }}
             >
-              {state.submitting ? 'Memproses…' : 'Transfer Sudah Diterima'}
+              {state.submitting ? 'Menyimpan…' : 'Konfirmasi Transfer Diterima'}
               <Icon name="chev-r" size={18} />
             </Btn>
             <Btn

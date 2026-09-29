@@ -83,7 +83,11 @@ export function ScreenReceipt() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
               {[
-                { k: 'Diterima', v: fmtRp(total), s: methodLabel },
+                {
+                  k: 'Diterima',
+                  v: fmtRp(total),
+                  s: state.paymentMethod === 'transfer-bca' ? `${methodLabel} · bukti tersimpan` : methodLabel,
+                },
                 { k: 'Pelanggan', v: 'Pak Yusuf', s: `+${Math.floor(total / 10000)} poin · Member Emas` },
                 { k: 'Estimasi siap', v: '± 18 menit', s: 'Antrian dapur #04' },
               ].map((m, i) => (

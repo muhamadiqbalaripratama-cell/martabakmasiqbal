@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CartLine, MenuItem, PaymentMethod, Screen } from '../types';
+import type { CartLine, MenuItem, PaymentMethod, Screen, TransferProof } from '../types';
 
 export type AppState = {
   screen: Screen;
@@ -7,6 +7,7 @@ export type AppState = {
   customizing: MenuItem | null;
   paymentMethod: PaymentMethod;
   cashReceived: number;
+  transferProof: TransferProof | null;
   // Order number for the session — predicted client-side until the order
   // is POSTed, then replaced with the real one returned by the API.
   orderNo: string;
@@ -26,8 +27,10 @@ export type AppAPI = {
   clearCart: () => void;
   setPaymentMethod: (m: PaymentMethod) => void;
   setCashReceived: (v: number) => void;
+  setTransferProof: (p: TransferProof | null) => void;
   startNewOrder: () => void;
-  submitOrder: () => Promise<void>;
+  // Resolves true kalau pesanan tersimpan di server.
+  submitOrder: () => Promise<boolean>;
 };
 
 export const AppCtx = createContext<AppAPI | null>(null);

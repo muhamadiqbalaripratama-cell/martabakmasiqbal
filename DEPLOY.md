@@ -142,9 +142,11 @@ Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker 
 | --- | --- | --- |
 | GET | `/api/health` | DB connection check |
 | GET | `/api/menu` | Daftar menu items |
-| GET | `/api/orders` | 50 pesanan terbaru |
+| GET | `/api/orders` | 50 pesanan terbaru; `?date=YYYY-MM-DD` → semua pesanan tanggal itu |
+| GET | `/api/orders/summary` | Ringkasan penjualan per metode; `?date=YYYY-MM-DD` (default hari ini, WIB) |
 | GET | `/api/orders/today/count` | Jumlah pesanan hari ini |
 | GET | `/api/orders/:id` | Detail pesanan + line items |
+| GET | `/api/orders/:id/proof` | Gambar bukti transfer (untuk pesanan Transfer BCA) |
 | POST | `/api/orders` | Buat pesanan baru |
 
 Contoh POST:
@@ -171,5 +173,13 @@ Contoh POST:
 ```
 
 `payment_method` hanya menerima: `cash` (Tunai), `qris` (QRIS), `transfer-bca` (Transfer Bank BCA · rek. 3620491887). Nilai lain ditolak dengan `400 invalid_payment_method`.
+
+Untuk `transfer-bca`, **bukti transfer wajib** dikirim di field `transfer_proof`:
+
+```json
+"transfer_proof": { "mime": "image/jpeg", "data": "<base64 gambar>" }
+```
+
+Format JPG/PNG/WEBP, maks 5 MB (frontend otomatis mengompres foto ke JPEG ±100–300 KB). Gambar disimpan di tabel `order_attachments` sehingga ikut ter-backup lewat `mysqldump`. Tabel ini dibuat otomatis oleh backend saat start, jadi database lama tidak perlu migrasi manual.
 
 Response: `{ id, order_no, subtotal, discount, tax, total, cash_received, change_due }`.

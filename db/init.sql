@@ -51,6 +51,21 @@ CREATE TABLE IF NOT EXISTS order_lines (
   INDEX idx_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bukti transfer (dan lampiran lain) per pesanan. Disimpan di DB supaya
+-- ikut ter-backup lewat mysqldump. Backend juga membuat tabel ini saat start
+-- (ensureSchema) untuk database yang sudah ada sebelumnya.
+CREATE TABLE IF NOT EXISTS order_attachments (
+  id          INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  order_id    INT          NOT NULL,
+  kind        VARCHAR(32)  NOT NULL,
+  mime        VARCHAR(32)  NOT NULL,
+  size_bytes  INT          NOT NULL,
+  data        MEDIUMBLOB   NOT NULL,
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_order_kind (order_id, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ─── Seed: menu_items ────────────────────────────────────────────
 -- Sama dengan src/data/menu.ts di frontend supaya cocok kalau frontend
 -- nanti fetch dari API.

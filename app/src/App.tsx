@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppCtx, type AppAPI, type AppState } from './state/store';
-import type { CartLine, MenuItem, PaymentMethod, Screen } from './types';
+import type { CartLine, MenuItem, PaymentMethod, Screen, TransferProof } from './types';
 import { createOrder, getTodayCount } from './services/api';
 import { ScreenMenu } from './screens/ScreenMenu';
 import { ScreenCart } from './screens/ScreenCart';
@@ -9,6 +9,7 @@ import { ScreenCash } from './screens/ScreenCash';
 import { ScreenQRIS } from './screens/ScreenQRIS';
 import { ScreenTransfer } from './screens/ScreenTransfer';
 import { ScreenReceipt } from './screens/ScreenReceipt';
+import { ScreenReport } from './screens/ScreenReport';
 
 const SEED_LINES: CartLine[] = [
   {
@@ -51,6 +52,7 @@ const initialState = (todayCount = 0, lines = SEED_LINES): AppState => ({
   customizing: null,
   paymentMethod: 'qris',
   cashReceived: 0,
+  transferProof: null,
   orderNo: padOrderNo(todayCount + 1),
   todayCount,
   submitting: false,
@@ -110,8 +112,14 @@ export function App() {
     [],
   );
 
-  // POST the order to the backend. UX never blocks on this — on failure we
-  // still navigate to the receipt with the locally-predicted order number.
+  const setTransferProof = useCallback(
+    (tp: TransferProof | null) => setState((p) => ({ ...p, transferProof: tp })),
+    [],
+  );
+
+  // POST the order to the backend. Tunai/QRIS never block on this — on failure
+  // the caller still navigates to the receipt with the locally-predicted order
+  // number. Transfer checks the result so the proof image isn't silently lost.
   const submitOrder = useCallback(async () => {
     setState((p) => ({ ...p, submitting: true }));
     try {
@@ -119,6 +127,7 @@ export function App() {
         lines: state.lines,
         paymentMethod: state.paymentMethod,
         cashReceived: state.cashReceived,
+        transferProof: state.paymentMethod === 'transfer-bca' ? state.transferProof : null,
       });
       setState((p) => ({
         ...p,
@@ -126,11 +135,13 @@ export function App() {
         todayCount: order.id,
         submitting: false,
       }));
+      return true;
     } catch (e) {
-      console.warn('[api] order POST failed, continuing offline:', e);
+      console.warn('[api] order POST failed:', e);
       setState((p) => ({ ...p, submitting: false }));
+      return false;
     }
-  }, [state.lines, state.paymentMethod, state.cashReceived]);
+  }, [state.lines, state.paymentMethod, state.cashReceived, state.transferProof]);
 
   const startNewOrder = useCallback(() => {
     // Re-fetch today's count to keep the order number preview accurate.
@@ -152,6 +163,7 @@ export function App() {
       clearCart,
       setPaymentMethod,
       setCashReceived,
+      setTransferProof,
       startNewOrder,
       submitOrder,
     }),
@@ -166,6 +178,7 @@ export function App() {
       clearCart,
       setPaymentMethod,
       setCashReceived,
+      setTransferProof,
       startNewOrder,
       submitOrder,
     ],
@@ -196,6 +209,8 @@ function ScreenSwitcher({ screen }: { screen: Screen }) {
       return <ScreenTransfer />;
     case 'receipt':
       return <ScreenReceipt />;
+    case 'report':
+      return <ScreenReport />;
   }
 }
 

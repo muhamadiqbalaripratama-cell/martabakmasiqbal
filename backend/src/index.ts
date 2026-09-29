@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { pool, waitForDb } from './db';
+import { ensureSchema, pool, waitForDb } from './db';
 import { menuRouter } from './routes/menu';
 import { ordersRouter } from './routes/orders';
 
@@ -8,10 +8,12 @@ const PORT = Number(process.env.PORT) || 3000;
 
 async function main() {
   await waitForDb();
+  await ensureSchema();
 
   const app = express();
   app.use(cors());
-  app.use(express.json({ limit: '1mb' }));
+  // Cukup besar untuk bukti transfer (gambar base64, sudah dikompres di browser).
+  app.use(express.json({ limit: '8mb' }));
 
   app.get('/api/health', async (_req, res) => {
     try {

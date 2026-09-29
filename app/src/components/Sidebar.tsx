@@ -1,17 +1,21 @@
 import { Icon } from './Icon';
 import { Logo } from './Logo';
+import { useApp } from '../state/store';
+import type { Screen } from '../types';
 
-type Item = { id: string; label: string; icon: string };
+// `screen` = item bisa diklik. Item tanpa screen belum punya halaman.
+type Item = { id: string; label: string; icon: string; screen?: Screen };
 
 const ITEMS: Item[] = [
-  { id: 'menu', label: 'Menu', icon: 'menu' },
+  { id: 'menu', label: 'Menu', icon: 'menu', screen: 'menu' },
   { id: 'orders', label: 'Pesanan', icon: 'receipt' },
   { id: 'tables', label: 'Meja', icon: 'table' },
-  { id: 'stats', label: 'Laporan', icon: 'stats' },
+  { id: 'stats', label: 'Laporan', icon: 'stats', screen: 'report' },
   { id: 'people', label: 'Pelanggan', icon: 'people' },
 ];
 
 export function Sidebar({ active = 'menu' }: { active?: string }) {
+  const { goto } = useApp();
   return (
     <aside
       style={{
@@ -33,7 +37,10 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
           return (
             <div
               key={it.id}
+              role={it.screen ? 'button' : undefined}
+              onClick={it.screen ? () => goto(it.screen!) : undefined}
               style={{
+                cursor: it.screen ? 'pointer' : 'default',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',

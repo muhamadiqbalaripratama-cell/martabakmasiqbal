@@ -103,6 +103,28 @@ export function Icon({ name, size = 18, stroke = 1.6, color = 'currentColor' }: 
           <circle cx="16" cy="14" r="1.5" />
         </svg>
       );
+    case 'upload':
+      return (
+        <svg {...p}>
+          <path d="M12 16V4M7 9l5-5 5 5" />
+          <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        </svg>
+      );
+    case 'image':
+      return (
+        <svg {...p}>
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <circle cx="9" cy="10" r="2" />
+          <path d="m21 16-5-5-9 9" />
+        </svg>
+      );
+    case 'refresh':
+      return (
+        <svg {...p}>
+          <path d="M20 12a8 8 0 1 1-2.34-5.66L20 8.5" />
+          <path d="M20 3.5v5h-5" />
+        </svg>
+      );
     case 'print':
       return (
         <svg {...p}>
