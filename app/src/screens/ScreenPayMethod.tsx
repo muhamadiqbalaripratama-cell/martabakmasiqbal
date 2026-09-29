@@ -3,6 +3,7 @@ import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { fmtRp } from '../data/menu';
+import { BANK_TRANSFER, fmtAccountNo } from '../data/payment';
 import type { PaymentMethod } from '../types';
 import { useApp, totalsFor } from '../state/store';
 
@@ -95,6 +96,8 @@ export function ScreenPayMethod() {
     if (method === 'cash') {
       if (state.cashReceived < total) setCashReceived(total);
       goto('cash');
+    } else if (method === 'transfer-bca') {
+      goto('transfer');
     } else {
       goto('qris');
     }
@@ -106,13 +109,8 @@ export function ScreenPayMethod() {
         return 'Lanjut ke Pembayaran Tunai';
       case 'qris':
         return 'Konfirmasi Bayar QRIS';
-      case 'gopay':
-        return 'Konfirmasi Bayar E-Wallet';
-      case 'card-debit':
-      case 'card-credit':
-        return 'Proses ke Mesin EDC';
-      default:
-        return 'Konfirmasi Pembayaran';
+      case 'transfer-bca':
+        return 'Lanjut ke Transfer BCA';
     }
   })();
 
@@ -197,85 +195,37 @@ export function ScreenPayMethod() {
             </div>
 
             <div>
-              <SectionHeader>Tunai</SectionHeader>
-              <Method
-                id="cash"
-                icon="cash"
-                label="Bayar Tunai"
-                sub="Kembalian dihitung otomatis"
-                accent="var(--yellow-soft)"
-                selected={method === 'cash'}
-                onSelect={() => setPaymentMethod('cash')}
-              />
-            </div>
-
-            <div>
-              <SectionHeader>QRIS & E-Wallet</SectionHeader>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <SectionHeader>Pilih Metode Pembayaran</SectionHeader>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Method
+                  id="cash"
+                  icon="cash"
+                  label="Tunai"
+                  sub="Kembalian dihitung otomatis"
+                  badge={method === 'cash' ? 'DIPILIH' : undefined}
+                  accent="var(--yellow-soft)"
+                  selected={method === 'cash'}
+                  onSelect={() => setPaymentMethod('cash')}
+                />
                 <Method
                   id="qris"
                   icon="qr"
-                  label="QRIS Statis"
-                  sub="Scan QR Bank Mandiri"
+                  label="QRIS"
+                  sub="Scan QR · GoPay, OVO, DANA, ShopeePay & semua m-banking"
                   badge={method === 'qris' ? 'DIPILIH' : undefined}
                   accent="var(--green-tint)"
                   selected={method === 'qris'}
                   onSelect={() => setPaymentMethod('qris')}
                 />
                 <Method
-                  id="gopay"
-                  icon="wallet"
-                  label="GoPay / OVO / Dana"
-                  sub="Tap-to-pay via aplikasi"
-                  accent="var(--green-tint)"
-                  selected={method === 'gopay'}
-                  onSelect={() => setPaymentMethod('gopay')}
-                />
-              </div>
-            </div>
-
-            <div>
-              <SectionHeader>Kartu</SectionHeader>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Method
-                  id="card-debit"
+                  id="transfer-bca"
                   icon="card"
-                  label="Kartu Debit"
-                  sub="Mesin EDC · BCA, Mandiri, BNI"
+                  label={`Transfer Bank ${BANK_TRANSFER.bank}`}
+                  sub={`No. Rekening ${fmtAccountNo(BANK_TRANSFER.accountNo)}`}
+                  badge={method === 'transfer-bca' ? 'DIPILIH' : undefined}
                   accent="var(--green-tint)"
-                  selected={method === 'card-debit'}
-                  onSelect={() => setPaymentMethod('card-debit')}
-                />
-                <Method
-                  id="card-credit"
-                  icon="card"
-                  label="Kartu Kredit"
-                  sub="Visa · Mastercard · JCB"
-                  accent="var(--green-tint)"
-                  selected={method === 'card-credit'}
-                  onSelect={() => setPaymentMethod('card-credit')}
-                />
-              </div>
-            </div>
-
-            <div>
-              <SectionHeader>Lainnya</SectionHeader>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Method
-                  id="cod"
-                  icon="people"
-                  label="Bayar di Tempat"
-                  sub="Untuk pesanan delivery / catering"
-                  selected={method === 'cod'}
-                  onSelect={() => setPaymentMethod('cod')}
-                />
-                <Method
-                  id="tab"
-                  icon="receipt"
-                  label="Tagihan ke Tab"
-                  sub="Untuk pelanggan member premium"
-                  selected={method === 'tab'}
-                  onSelect={() => setPaymentMethod('tab')}
+                  selected={method === 'transfer-bca'}
+                  onSelect={() => setPaymentMethod('transfer-bca')}
                 />
               </div>
             </div>

@@ -4,6 +4,7 @@ import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
+import { PAYMENT_LABEL } from '../data/payment';
 import { useApp, totalsFor } from '../state/store';
 
 export function ScreenReceipt() {
@@ -12,15 +13,7 @@ export function ScreenReceipt() {
   const isCash = state.paymentMethod === 'cash';
   const paid = isCash ? state.cashReceived : total;
   const change = Math.max(0, paid - total);
-  const methodLabel: Record<string, string> = {
-    cash: 'Tunai',
-    qris: 'QRIS · GoPay',
-    gopay: 'E-Wallet',
-    'card-debit': 'Kartu Debit',
-    'card-credit': 'Kartu Kredit',
-    cod: 'Bayar di Tempat',
-    tab: 'Tagihan Tab',
-  };
+  const methodLabel = PAYMENT_LABEL[state.paymentMethod];
 
   return (
     <div
@@ -82,7 +75,7 @@ export function ScreenReceipt() {
                   Sukses, Mas Iqbal!
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6 }}>
-                  Pesanan <b>#{state.orderNo}</b> sudah dibayar via {methodLabel[state.paymentMethod] || 'QRIS'} ·{' '}
+                  Pesanan <b>#{state.orderNo}</b> sudah dibayar via {methodLabel} ·{' '}
                   {fmtRp(total)} masuk ke kas hari ini.
                 </div>
               </div>
@@ -90,7 +83,7 @@ export function ScreenReceipt() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
               {[
-                { k: 'Diterima', v: fmtRp(total), s: methodLabel[state.paymentMethod] || 'QRIS' },
+                { k: 'Diterima', v: fmtRp(total), s: methodLabel },
                 { k: 'Pelanggan', v: 'Pak Yusuf', s: `+${Math.floor(total / 10000)} poin · Member Emas` },
                 { k: 'Estimasi siap', v: '± 18 menit', s: 'Antrian dapur #04' },
               ].map((m, i) => (
@@ -305,7 +298,7 @@ export function ScreenReceipt() {
                 <span>{fmtRp(total)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span>Bayar {methodLabel[state.paymentMethod] || 'QRIS'}</span>
+                <span>Bayar {methodLabel}</span>
                 <span>{fmtRp(paid)}</span>
               </div>
               <RcLine k="Kembali" v={fmtRp(change)} />

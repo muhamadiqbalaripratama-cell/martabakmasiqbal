@@ -7,6 +7,9 @@ export const ordersRouter = Router();
 const TAX_RATE = 0.11;
 const DISCOUNT_RATE = 0.1;
 
+// Metode pembayaran yang diterima: Tunai, QRIS, Transfer Bank BCA.
+const PAYMENT_METHODS = ['cash', 'qris', 'transfer-bca'];
+
 type IncomingLine = {
   menu_id?: string;
   name?: string;
@@ -34,6 +37,9 @@ ordersRouter.post('/', async (req, res) => {
   }
   if (!body.payment_method) {
     return res.status(400).json({ error: 'payment_method_required' });
+  }
+  if (!PAYMENT_METHODS.includes(body.payment_method)) {
+    return res.status(400).json({ error: 'invalid_payment_method', allowed: PAYMENT_METHODS });
   }
 
   // Sanitize lines

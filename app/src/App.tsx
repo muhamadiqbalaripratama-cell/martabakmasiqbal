@@ -7,6 +7,7 @@ import { ScreenCart } from './screens/ScreenCart';
 import { ScreenPayMethod } from './screens/ScreenPayMethod';
 import { ScreenCash } from './screens/ScreenCash';
 import { ScreenQRIS } from './screens/ScreenQRIS';
+import { ScreenTransfer } from './screens/ScreenTransfer';
 import { ScreenReceipt } from './screens/ScreenReceipt';
 
 const SEED_LINES: CartLine[] = [
@@ -191,6 +192,8 @@ function ScreenSwitcher({ screen }: { screen: Screen }) {
       return <ScreenCash />;
     case 'qris':
       return <ScreenQRIS />;
+    case 'transfer':
+      return <ScreenTransfer />;
     case 'receipt':
       return <ScreenReceipt />;
   }

@@ -6,16 +6,10 @@ export type Screen =
   | 'pay-method'
   | 'cash'
   | 'qris'
+  | 'transfer'
   | 'receipt';
 
-export type PaymentMethod =
-  | 'cash'
-  | 'qris'
-  | 'gopay'
-  | 'card-debit'
-  | 'card-credit'
-  | 'cod'
-  | 'tab';
+export type PaymentMethod = 'cash' | 'qris' | 'transfer-bca';
 
 export type MenuItem = {
   id: string;

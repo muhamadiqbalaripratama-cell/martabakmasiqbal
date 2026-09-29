@@ -280,7 +280,7 @@ export function ScreenQRIS() {
             {/* Steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { ok: true, t: 'QR Code dibuat', d: '19:41:02 · Mandiri Switching' },
+                { ok: true, t: 'QR Code dibuat', d: '19:41:02' },
                 { ok: true, t: 'Pelanggan men-scan QR', d: '19:41:18 · GoPay' },
                 {
                   active: true,

@@ -170,4 +170,6 @@ Contoh POST:
 }
 ```
 
+`payment_method` hanya menerima: `cash` (Tunai), `qris` (QRIS), `transfer-bca` (Transfer Bank BCA · rek. 3620491887). Nilai lain ditolak dengan `400 invalid_payment_method`.
+
 Response: `{ id, order_no, subtotal, discount, tax, total, cash_received, change_due }`.
