@@ -1,4 +1,4 @@
-import type { PaymentMethod, TransferProof } from '../types';
+import type { PaymentMethod, PaymentProof } from '../types';
 
 // Rekening tujuan untuk metode Transfer Bank.
 export const BANK_TRANSFER = {
@@ -11,6 +11,9 @@ export const BANK_TRANSFER = {
 // Nomor rekening dikelompokkan 4-4-2 supaya mudah dibaca: 3620 4918 87
 export const fmtAccountNo = (no: string) => no.replace(/(\d{4})(?=\d)/g, '$1 ');
 
+// Metode non-tunai wajib upload bukti pembayaran (sama dengan backend).
+export const needsProof = (m: PaymentMethod) => m === 'qris' || m === 'transfer-bca';
+
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   cash: 'Tunai',
   qris: 'QRIS',
@@ -22,7 +25,7 @@ const PROOF_MAX_INPUT_BYTES = 20 * 1024 * 1024;
 
 // Foto HP bisa 3–8 MB. Perkecil ke sisi terpanjang 1600px dan simpan sebagai
 // JPEG supaya upload cepat dan hemat ruang DB — teks nominal tetap terbaca.
-export async function compressProofImage(file: File): Promise<TransferProof> {
+export async function compressProofImage(file: File): Promise<PaymentProof> {
   if (!file.type.startsWith('image/')) throw new Error('File harus berupa gambar (JPG/PNG).');
   if (file.size > PROOF_MAX_INPUT_BYTES) throw new Error('Ukuran gambar maksimal 20 MB.');
 

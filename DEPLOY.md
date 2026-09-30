@@ -30,8 +30,10 @@ Aplikasi POS Martabak Mas Iqbal dengan stack:
 
 ```bash
 cp .env.example .env
-nano .env  # ganti semua password
+nano .env  # ganti semua password, termasuk ADMIN_PASSWORD & OPERATOR_PASSWORD
 ```
+
+`ADMIN_*` / `OPERATOR_*` hanya dipakai **sekali**, saat database belum punya user sama sekali. Setelah itu akun dikelola dari menu **Pengguna** (login sebagai admin). Kalau `ADMIN_PASSWORD` dikosongkan, password acak dicetak di log: `docker compose logs api | grep auth`.
 
 ### 2. Build & jalankan
 
@@ -136,18 +138,38 @@ Cek logs: `docker compose logs api`. Pastikan MySQL healthy: `docker compose ps`
 
 Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker compose exec web ls /usr/share/nginx/html`.
 
+## Login & hak akses
+
+| Role | Bisa |
+| --- | --- |
+| **Operator** | Login, transaksi kasir (Tunai / QRIS / Transfer BCA + upload bukti) |
+| **Admin** | Semua yang operator bisa, plus **Laporan** (termasuk lihat bukti bayar) dan **Pengguna** (tambah akun, reset password, ubah role, nonaktifkan) |
+
+- Sesi login disimpan di cookie `HttpOnly` selama 12 jam (satu shift), lalu harus login ulang.
+- Setelah 5x salah password, username tersebut dikunci 15 menit dari IP yang sama.
+- Reset password, ganti role, atau menonaktifkan akun langsung mengeluarkan akun itu dari semua perangkat.
+- Kalau aplikasi diakses lewat HTTPS (lihat langkah 4), set `COOKIE_SECURE=true` di `.env`.
+
 ## API Endpoints
 
-| Method | Path | Keterangan |
-| --- | --- | --- |
-| GET | `/api/health` | DB connection check |
-| GET | `/api/menu` | Daftar menu items |
-| GET | `/api/orders` | 50 pesanan terbaru; `?date=YYYY-MM-DD` → semua pesanan tanggal itu |
-| GET | `/api/orders/summary` | Ringkasan penjualan per metode; `?date=YYYY-MM-DD` (default hari ini, WIB) |
-| GET | `/api/orders/today/count` | Jumlah pesanan hari ini |
-| GET | `/api/orders/:id` | Detail pesanan + line items |
-| GET | `/api/orders/:id/proof` | Gambar bukti transfer (untuk pesanan Transfer BCA) |
-| POST | `/api/orders` | Buat pesanan baru |
+Semua endpoint selain `/api/health` dan `/api/auth/login` butuh login (cookie sesi).
+
+| Method | Path | Akses | Keterangan |
+| --- | --- | --- | --- |
+| GET | `/api/health` | publik | DB connection check |
+| POST | `/api/auth/login` | publik | `{ username, password }` → set cookie sesi |
+| POST | `/api/auth/logout` | publik | Hapus sesi |
+| GET | `/api/auth/me` | login | User yang sedang login |
+| GET | `/api/menu` | login | Daftar menu items |
+| POST | `/api/orders` | login | Buat pesanan baru (dicatat atas nama user yang login) |
+| GET | `/api/orders/today/count` | login | Jumlah pesanan hari ini |
+| GET | `/api/orders` | admin | 50 pesanan terbaru; `?date=YYYY-MM-DD` → semua pesanan tanggal itu |
+| GET | `/api/orders/summary` | admin | Ringkasan penjualan per metode; `?date=YYYY-MM-DD` (default hari ini, WIB) |
+| GET | `/api/orders/:id` | admin | Detail pesanan + line items |
+| GET | `/api/orders/:id/proof` | admin | Gambar bukti pembayaran (QRIS / Transfer BCA) |
+| GET | `/api/users` | admin | Daftar pengguna |
+| POST | `/api/users` | admin | `{ username, name, role, password }` |
+| PATCH | `/api/users/:id` | admin | Ubah `name` / `role` / `password` / `active` |
 
 Contoh POST:
 
@@ -174,12 +196,12 @@ Contoh POST:
 
 `payment_method` hanya menerima: `cash` (Tunai), `qris` (QRIS), `transfer-bca` (Transfer Bank BCA · rek. 3620491887). Nilai lain ditolak dengan `400 invalid_payment_method`.
 
-Untuk `transfer-bca`, **bukti transfer wajib** dikirim di field `transfer_proof`:
+Untuk `qris` dan `transfer-bca`, **bukti pembayaran wajib** dikirim di field `payment_proof`:
 
 ```json
-"transfer_proof": { "mime": "image/jpeg", "data": "<base64 gambar>" }
+"payment_proof": { "mime": "image/jpeg", "data": "<base64 gambar>" }
 ```
 
-Format JPG/PNG/WEBP, maks 5 MB (frontend otomatis mengompres foto ke JPEG ±100–300 KB). Gambar disimpan di tabel `order_attachments` sehingga ikut ter-backup lewat `mysqldump`. Tabel ini dibuat otomatis oleh backend saat start, jadi database lama tidak perlu migrasi manual.
+Format JPG/PNG/WEBP, maks 5 MB (frontend otomatis mengompres foto ke JPEG ±100–300 KB). Gambar disimpan di tabel `order_attachments` sehingga ikut ter-backup lewat `mysqldump`. Tabel ini (juga `users`, `sessions`, dan kolom `orders.created_by`) dibuat otomatis oleh backend saat start, jadi database lama tidak perlu migrasi manual.
 
 Response: `{ id, order_no, subtotal, discount, tax, total, cash_received, change_due }`.

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from '../db';
+import { currentUser, requireAuth } from '../auth';
 
 export const ordersRouter = Router();
 
@@ -9,6 +10,8 @@ const DISCOUNT_RATE = 0.1;
 
 // Metode pembayaran yang diterima: Tunai, QRIS, Transfer Bank BCA.
 const PAYMENT_METHODS = ['cash', 'qris', 'transfer-bca'];
+// Metode non-tunai wajib melampirkan bukti pembayaran (foto/screenshot).
+const PROOF_REQUIRED = ['qris', 'transfer-bca'];
 
 const PROOF_MAX_BYTES = 5 * 1024 * 1024;
 const PROOF_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -24,12 +27,12 @@ function matchesMagic(buf: Buffer, mime: string): boolean {
 type ProofInput = { mime?: string; data?: string };
 
 function parseProof(p: ProofInput | undefined): { mime: string; data: Buffer } | string {
-  if (!p || typeof p.data !== 'string' || typeof p.mime !== 'string') return 'transfer_proof_required';
-  if (!PROOF_MIMES.includes(p.mime)) return 'transfer_proof_invalid_type';
+  if (!p || typeof p.data !== 'string' || typeof p.mime !== 'string') return 'payment_proof_required';
+  if (!PROOF_MIMES.includes(p.mime)) return 'payment_proof_invalid_type';
   const data = Buffer.from(p.data, 'base64');
-  if (data.length === 0) return 'transfer_proof_required';
-  if (data.length > PROOF_MAX_BYTES) return 'transfer_proof_too_large';
-  if (!matchesMagic(data, p.mime)) return 'transfer_proof_invalid_type';
+  if (data.length === 0) return 'payment_proof_required';
+  if (data.length > PROOF_MAX_BYTES) return 'payment_proof_too_large';
+  if (!matchesMagic(data, p.mime)) return 'payment_proof_invalid_type';
   return { mime: p.mime, data };
 }
 
@@ -52,11 +55,12 @@ type CreateOrderBody = {
   customer_name?: string;
   payment_method?: string;
   cash_received?: number;
-  // Wajib untuk transfer-bca: gambar bukti transfer dalam base64.
-  transfer_proof?: ProofInput;
+  // Wajib untuk qris & transfer-bca: gambar bukti pembayaran dalam base64.
+  payment_proof?: ProofInput;
 };
 
-ordersRouter.post('/', async (req, res) => {
+// Operator & admin: mencatat pesanan.
+ordersRouter.post('/', requireAuth(), async (req, res) => {
   const body = req.body as CreateOrderBody;
 
   if (!Array.isArray(body.lines) || body.lines.length === 0) {
@@ -69,8 +73,8 @@ ordersRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'invalid_payment_method', allowed: PAYMENT_METHODS });
   }
   let proof: { mime: string; data: Buffer } | null = null;
-  if (body.payment_method === 'transfer-bca') {
-    const parsed = parseProof(body.transfer_proof);
+  if (PROOF_REQUIRED.includes(body.payment_method)) {
+    const parsed = parseProof(body.payment_proof);
     if (typeof parsed === 'string') return res.status(400).json({ error: parsed });
     proof = parsed;
   }
@@ -107,8 +111,8 @@ ordersRouter.post('/', async (req, res) => {
     const [result] = await conn.query<ResultSetHeader>(
       `INSERT INTO orders
          (type, table_no, customer_name, subtotal, discount, tax, total,
-          payment_method, cash_received, change_due, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid')`,
+          payment_method, cash_received, change_due, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?)`,
       [
         body.type || 'dine-in',
         body.table_no || null,
@@ -120,6 +124,7 @@ ordersRouter.post('/', async (req, res) => {
         body.payment_method,
         cash_received,
         change_due,
+        currentUser(res).id,
       ],
     );
     const orderId = result.insertId;
@@ -136,7 +141,7 @@ ordersRouter.post('/', async (req, res) => {
     if (proof) {
       await conn.query(
         `INSERT INTO order_attachments (order_id, kind, mime, size_bytes, data)
-         VALUES (?, 'transfer_proof', ?, ?, ?)`,
+         VALUES (?, 'payment_proof', ?, ?, ?)`,
         [orderId, proof.mime, proof.data.length, proof.data],
       );
     }
@@ -161,7 +166,7 @@ ordersRouter.post('/', async (req, res) => {
   }
 });
 
-ordersRouter.get('/today/count', async (_req, res) => {
+ordersRouter.get('/today/count', requireAuth(), async (_req, res) => {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(
       'SELECT COUNT(*) AS count FROM orders WHERE DATE(created_at) = CURDATE()',
@@ -174,7 +179,7 @@ ordersRouter.get('/today/count', async (_req, res) => {
 });
 
 // Ringkasan penjualan per hari untuk layar Laporan. ?date=YYYY-MM-DD (default hari ini).
-ordersRouter.get('/summary', async (req, res) => {
+ordersRouter.get('/summary', requireAuth('admin'), async (req, res) => {
   const date = isDate(req.query.date) ? req.query.date : null;
   try {
     const [rows] = await pool.query<RowDataPacket[]>(
@@ -201,15 +206,17 @@ ordersRouter.get('/summary', async (req, res) => {
 });
 
 // ?date=YYYY-MM-DD → semua pesanan hari itu; tanpa date → 50 terbaru.
-ordersRouter.get('/', async (req, res) => {
+ordersRouter.get('/', requireAuth('admin'), async (req, res) => {
   const date = isDate(req.query.date) ? req.query.date : null;
   try {
     const [rows] = await pool.query(
       `SELECT o.id, LPAD(o.id, 4, '0') AS order_no,
               o.type, o.table_no, o.customer_name, o.total, o.payment_method, o.status, o.created_at,
+              u.name AS operator_name,
               EXISTS (SELECT 1 FROM order_attachments a
-                       WHERE a.order_id = o.id AND a.kind = 'transfer_proof') AS has_proof
+                       WHERE a.order_id = o.id AND a.kind = 'payment_proof') AS has_proof
          FROM orders o
+         LEFT JOIN users u ON u.id = o.created_by
         ${date ? 'WHERE DATE(o.created_at) = ?' : ''}
         ORDER BY o.created_at DESC
         LIMIT ${date ? 1000 : 50}`,
@@ -222,14 +229,14 @@ ordersRouter.get('/', async (req, res) => {
   }
 });
 
-ordersRouter.get('/:id/proof', async (req, res) => {
+ordersRouter.get('/:id/proof', requireAuth('admin'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
     return res.status(400).json({ error: 'invalid_id' });
   }
   try {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mime, data FROM order_attachments WHERE order_id = ? AND kind = 'transfer_proof'`,
+      `SELECT mime, data FROM order_attachments WHERE order_id = ? AND kind = 'payment_proof'`,
       [id],
     );
     if (!rows[0]) return res.status(404).json({ error: 'not_found' });
@@ -242,7 +249,7 @@ ordersRouter.get('/:id/proof', async (req, res) => {
   }
 });
 
-ordersRouter.get('/:id', async (req, res) => {
+ordersRouter.get('/:id', requireAuth('admin'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
     return res.status(400).json({ error: 'invalid_id' });
@@ -251,7 +258,7 @@ ordersRouter.get('/:id', async (req, res) => {
     const [orders] = await pool.query<RowDataPacket[]>(
       `SELECT o.*, LPAD(o.id, 4, '0') AS order_no,
               EXISTS (SELECT 1 FROM order_attachments a
-                       WHERE a.order_id = o.id AND a.kind = 'transfer_proof') AS has_proof
+                       WHERE a.order_id = o.id AND a.kind = 'payment_proof') AS has_proof
          FROM orders o WHERE o.id = ?`,
       [id],
     );

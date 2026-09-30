@@ -4,7 +4,7 @@ import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { fmtRp } from '../data/menu';
-import { PAYMENT_LABEL } from '../data/payment';
+import { needsProof, PAYMENT_LABEL } from '../data/payment';
 import { getSummary, listOrders, proofUrl, type OrderRow, type SalesSummary } from '../services/api';
 import type { PaymentMethod } from '../types';
 
@@ -50,7 +50,7 @@ export function ScreenReport() {
     summary?.by_method.find((r) => r.payment_method === m) ?? { count: 0, total: 0 };
   const visible = filter === 'all' ? orders : orders.filter((o) => o.payment_method === filter);
   const missingProof = orders.filter(
-    (o) => o.payment_method === 'transfer-bca' && o.status === 'paid' && !Number(o.has_proof),
+    (o) => needsProof(o.payment_method) && o.status === 'paid' && !Number(o.has_proof),
   ).length;
 
   return (
@@ -59,7 +59,7 @@ export function ScreenReport() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar
           title="Laporan Penjualan"
-          subtitle="Ringkasan harian & bukti transfer"
+          subtitle="Ringkasan harian & bukti pembayaran"
           right={
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input
@@ -157,7 +157,7 @@ export function ScreenReport() {
                 fontWeight: 600,
               }}
             >
-              {missingProof} pesanan Transfer BCA belum memiliki bukti transfer.
+              {missingProof} pesanan QRIS / Transfer BCA belum memiliki bukti pembayaran.
             </div>
           )}
 
@@ -202,8 +202,9 @@ export function ScreenReport() {
                   <Th>Jam</Th>
                   <Th>Pelanggan</Th>
                   <Th>Metode</Th>
+                  <Th>Operator</Th>
                   <Th align="right">Total</Th>
-                  <Th>Bukti Transfer</Th>
+                  <Th>Bukti Bayar</Th>
                 </tr>
               </thead>
               <tbody>
@@ -215,13 +216,14 @@ export function ScreenReport() {
                     <Td>{fmtTime(o.created_at)}</Td>
                     <Td>{[o.customer_name, o.table_no].filter(Boolean).join(' · ') || '—'}</Td>
                     <Td>{PAYMENT_LABEL[o.payment_method] ?? o.payment_method}</Td>
+                    <Td>{o.operator_name ?? '—'}</Td>
                     <Td align="right">
                       <span className="tnum" style={{ fontWeight: 700 }}>
                         {fmtRp(o.total)}
                       </span>
                     </Td>
                     <Td>
-                      {o.payment_method !== 'transfer-bca' ? (
+                      {!needsProof(o.payment_method) ? (
                         <span style={{ color: 'var(--ink-4)' }}>—</span>
                       ) : Number(o.has_proof) ? (
                         <Btn kind="soft" size="sm" icon="image" onClick={() => setViewing(o)}>
@@ -235,7 +237,7 @@ export function ScreenReport() {
                 ))}
                 {visible.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: 32, textAlign: 'center', color: error ? 'var(--danger)' : 'var(--ink-3)' }}>
+                    <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: error ? 'var(--danger)' : 'var(--ink-3)' }}>
                       {loading ? 'Memuat…' : error ?? 'Belum ada pesanan pada tanggal ini.'}
                     </td>
                   </tr>
@@ -287,7 +289,7 @@ function ProofModal({ order, onClose }: { order: OrderRow; onClose: () => void }
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700 }}>
-              Bukti Transfer · #{order.order_no}
+              Bukti {PAYMENT_LABEL[order.payment_method] ?? 'Pembayaran'} · #{order.order_no}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
               {fmtTime(order.created_at)} · <span className="tnum">{fmtRp(order.total)}</span>
@@ -307,7 +309,7 @@ function ProofModal({ order, onClose }: { order: OrderRow; onClose: () => void }
         <div style={{ padding: 16, background: 'var(--surface-soft)', overflow: 'auto' }}>
           <img
             src={src}
-            alt={`Bukti transfer pesanan #${order.order_no}`}
+            alt={`Bukti pembayaran pesanan #${order.order_no}`}
             style={{ display: 'block', width: '100%', maxHeight: 640, objectFit: 'contain', borderRadius: 10 }}
           />
         </div>

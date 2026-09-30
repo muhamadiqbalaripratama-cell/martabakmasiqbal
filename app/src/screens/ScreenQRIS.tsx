@@ -1,35 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { QRBlock } from '../components/QRBlock';
+import { ProofUpload } from '../components/ProofUpload';
 import { fmtRp } from '../data/menu';
 import { useApp, totalsFor } from '../state/store';
 
-const COUNTDOWN_SECONDS = 5 * 60;
-
 export function ScreenQRIS() {
-  const { state, goto, submitOrder } = useApp();
+  const { state, goto, submitOrder, setPaymentProof } = useApp();
   const { total } = totalsFor(state.lines);
-  const [remaining, setRemaining] = useState(228); // 3:48 like the design
+  const proof = state.paymentProof;
+  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
-    await submitOrder();
-    goto('receipt');
+    if (!proof) {
+      setError('Upload bukti pembayaran QRIS terlebih dahulu.');
+      return;
+    }
+    setError(null);
+    // Jangan lanjut ke struk kalau gagal tersimpan, supaya bukti tidak hilang.
+    if (await submitOrder()) goto('receipt');
+    else setError('Gagal menyimpan pesanan ke server. Periksa koneksi lalu coba lagi.');
   };
 
-  useEffect(() => {
-    const t = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  const timeLabel = `${mins}:${String(secs).padStart(2, '0')}`;
-  const progress = remaining / COUNTDOWN_SECONDS;
-  const dashOffset = 2 * Math.PI * 36 * (1 - progress);
+  const canConfirm = Boolean(proof) && !state.submitting;
 
   return (
     <div className="pos">
@@ -37,7 +34,7 @@ export function ScreenQRIS() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar
           title="Scan QRIS"
-          subtitle={`Pesanan #${state.orderNo} · Menunggu pembayaran`}
+          subtitle={`Pesanan #${state.orderNo} · ${proof ? 'Bukti pembayaran siap' : 'Menunggu bukti pembayaran'}`}
           right={
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div
@@ -221,122 +218,45 @@ export function ScreenQRIS() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                Status Pembayaran
+                Bukti Pembayaran QRIS
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-                Auto-refresh tiap 2 detik
+                Setelah pelanggan membayar, upload foto / screenshot notifikasi pembayaran berhasil
               </div>
             </div>
 
-            {/* Big timer */}
-            <div
-              style={{
-                padding: 22,
-                borderRadius: 18,
-                background: 'var(--bg)',
-                border: '1px solid var(--hairline)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 18,
-              }}
-            >
-              <svg width="84" height="84" viewBox="0 0 84 84">
-                <circle cx="42" cy="42" r="36" fill="none" stroke="var(--hairline)" strokeWidth="6" />
-                <circle
-                  cx="42"
-                  cy="42"
-                  r="36"
-                  fill="none"
-                  stroke="var(--green)"
-                  strokeWidth="6"
-                  strokeDasharray={2 * Math.PI * 36}
-                  strokeDashoffset={dashOffset}
-                  strokeLinecap="round"
-                  transform="rotate(-90 42 42)"
-                />
-                <text
-                  x="42"
-                  y="46"
-                  textAnchor="middle"
-                  fontFamily="var(--font-display)"
-                  fontSize="18"
-                  fontWeight="700"
-                  fill="var(--ink)"
-                >
-                  {timeLabel}
-                </text>
-              </svg>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Sisa waktu</div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>
-                  {mins} menit {secs} detik
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-                  QR akan diregenerasi setelah waktu habis
-                </div>
-              </div>
-            </div>
+            <ProofUpload proof={proof} onChange={setPaymentProof} label="Upload Bukti QRIS" />
 
-            {/* Steps */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { ok: true, t: 'QR Code dibuat', d: '19:41:02' },
-                { ok: true, t: 'Pelanggan men-scan QR', d: '19:41:18 · GoPay' },
-                {
-                  active: true,
-                  t: 'Menunggu konfirmasi pembayaran',
-                  d: 'Pelanggan menyelesaikan transaksi di aplikasi…',
-                },
-                { t: 'Dana diterima', d: 'Auto-trigger struk & cetak' },
-              ].map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: s.ok ? 'var(--green)' : s.active ? 'var(--yellow)' : 'var(--bg-2)',
-                      color: s.ok ? '#fff' : s.active ? 'var(--green)' : 'var(--ink-3)',
-                      display: 'grid',
-                      placeItems: 'center',
-                      flexShrink: 0,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      boxShadow: s.active ? '0 0 0 5px rgba(245,197,24,.18)' : 'none',
-                    }}
-                  >
-                    {s.ok ? <Icon name="check" size={14} stroke={2.6} /> : i + 1}
-                  </div>
-                  <div style={{ paddingTop: 3 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: s.active || s.ok ? 'var(--ink)' : 'var(--ink-3)',
-                      }}
-                    >
-                      {s.t}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{s.d}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {error && (
+              <div
+                role="alert"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: 'var(--danger-soft)',
+                  color: 'var(--danger)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {error}
+              </div>
+            )}
 
             <div style={{ flex: 1 }} />
             <Btn
               kind="primary"
               size="lg"
-              disabled={state.submitting}
+              disabled={!canConfirm}
               onClick={handleConfirm}
               style={{
                 width: '100%',
                 justifyContent: 'space-between',
-                opacity: state.submitting ? 0.55 : 1,
-                cursor: state.submitting ? 'not-allowed' : 'pointer',
+                opacity: canConfirm ? 1 : 0.55,
+                cursor: canConfirm ? 'pointer' : 'not-allowed',
               }}
             >
-              {state.submitting ? 'Memproses…' : 'Simulasikan: Pembayaran Diterima'}
+              {state.submitting ? 'Menyimpan…' : 'Konfirmasi QRIS Diterima'}
               <Icon name="chev-r" size={18} />
             </Btn>
             <Btn

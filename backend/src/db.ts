@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import type { RowDataPacket } from 'mysql2';
 
 export const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || 'mysql',
@@ -34,8 +35,9 @@ export async function waitForDb(maxAttempts = 30, intervalMs = 2000): Promise<vo
   throw new Error('MySQL unavailable after retries');
 }
 
-// init.sql hanya jalan saat volume MySQL masih kosong. Tabel yang ditambahkan
-// belakangan dibuat di sini supaya database yang sudah berjalan ikut ter-update.
+// init.sql hanya jalan saat volume MySQL masih kosong. Tabel/kolom yang
+// ditambahkan belakangan dibuat di sini supaya database yang sudah berjalan
+// ikut ter-update. Semua langkah aman dijalankan berulang kali.
 export async function ensureSchema(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS order_attachments (
@@ -50,4 +52,41 @@ export async function ensureSchema(): Promise<void> {
       UNIQUE KEY uniq_order_kind (order_id, kind)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  // Bukti bayar kini dipakai QRIS juga, bukan hanya transfer.
+  await pool.query(`UPDATE order_attachments SET kind = 'payment_proof' WHERE kind = 'transfer_proof'`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id             INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      username       VARCHAR(64)  NOT NULL UNIQUE,
+      name           VARCHAR(128) NOT NULL,
+      role           ENUM('operator', 'admin') NOT NULL,
+      password_hash  VARCHAR(255) NOT NULL,
+      active         TINYINT(1)   NOT NULL DEFAULT 1,
+      created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash  CHAR(64)   NOT NULL PRIMARY KEY,
+      user_id     INT        NOT NULL,
+      expires_at  DATETIME   NOT NULL,
+      created_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      INDEX idx_expires (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // MySQL 8.0 belum mendukung ADD COLUMN IF NOT EXISTS → cek manual.
+  const [cols] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'created_by'`,
+  );
+  if (cols.length === 0) {
+    await pool.query(`
+      ALTER TABLE orders
+        ADD COLUMN created_by INT NULL AFTER status,
+        ADD CONSTRAINT fk_orders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    `);
+  }
 }

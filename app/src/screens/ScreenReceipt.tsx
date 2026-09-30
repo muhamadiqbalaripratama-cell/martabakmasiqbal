@@ -4,11 +4,11 @@ import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
-import { PAYMENT_LABEL } from '../data/payment';
+import { needsProof, PAYMENT_LABEL } from '../data/payment';
 import { useApp, totalsFor } from '../state/store';
 
 export function ScreenReceipt() {
-  const { state, startNewOrder, goto } = useApp();
+  const { state, startNewOrder, goto, user } = useApp();
   const { sub, disc, tax, total, itemCount } = totalsFor(state.lines);
   const isCash = state.paymentMethod === 'cash';
   const paid = isCash ? state.cashReceived : total;
@@ -72,7 +72,7 @@ export function ScreenReceipt() {
                     lineHeight: 1.05,
                   }}
                 >
-                  Sukses, Mas Iqbal!
+                  Sukses, {user.name}!
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6 }}>
                   Pesanan <b>#{state.orderNo}</b> sudah dibayar via {methodLabel} ·{' '}
@@ -86,7 +86,7 @@ export function ScreenReceipt() {
                 {
                   k: 'Diterima',
                   v: fmtRp(total),
-                  s: state.paymentMethod === 'transfer-bca' ? `${methodLabel} · bukti tersimpan` : methodLabel,
+                  s: needsProof(state.paymentMethod) ? `${methodLabel} · bukti tersimpan` : methodLabel,
                 },
                 { k: 'Pelanggan', v: 'Pak Yusuf', s: `+${Math.floor(total / 10000)} poin · Member Emas` },
                 { k: 'Estimasi siap', v: '± 18 menit', s: 'Antrian dapur #04' },

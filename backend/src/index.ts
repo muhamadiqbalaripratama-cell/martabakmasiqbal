@@ -1,18 +1,21 @@
 import express from 'express';
-import cors from 'cors';
 import { ensureSchema, pool, waitForDb } from './db';
+import { bootstrapUsers, requireAuth } from './auth';
+import { authRouter } from './routes/auth';
 import { menuRouter } from './routes/menu';
 import { ordersRouter } from './routes/orders';
+import { usersRouter } from './routes/users';
 
 const PORT = Number(process.env.PORT) || 3000;
 
 async function main() {
   await waitForDb();
   await ensureSchema();
+  await bootstrapUsers();
 
   const app = express();
-  app.use(cors());
-  // Cukup besar untuk bukti transfer (gambar base64, sudah dikompres di browser).
+  app.disable('x-powered-by');
+  // Cukup besar untuk bukti pembayaran (gambar base64, sudah dikompres di browser).
   app.use(express.json({ limit: '8mb' }));
 
   app.get('/api/health', async (_req, res) => {
@@ -24,8 +27,10 @@ async function main() {
     }
   });
 
-  app.use('/api/menu', menuRouter);
-  app.use('/api/orders', ordersRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/menu', requireAuth(), menuRouter);
+  app.use('/api/orders', ordersRouter); // izin diatur per route
+  app.use('/api/users', usersRouter); // khusus admin
 
   app.use((_req, res) => res.status(404).json({ error: 'not_found' }));
 

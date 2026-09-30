@@ -1,4 +1,4 @@
-import type { CartLine, PaymentMethod, TransferProof } from '../types';
+import type { CartLine, PaymentMethod, PaymentProof, Role, User } from '../types';
 
 // Always relative — nginx in front proxies /api/* to the backend service.
 const BASE = '/api';
@@ -7,7 +7,7 @@ type CreateOrderInput = {
   lines: CartLine[];
   paymentMethod: PaymentMethod;
   cashReceived: number;
-  transferProof?: TransferProof | null;
+  paymentProof?: PaymentProof | null;
   type?: string;
   tableNo?: string;
   customerName?: string;
@@ -24,17 +24,71 @@ export type CreatedOrder = {
   change_due: number;
 };
 
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    public body: Record<string, unknown> = {},
+  ) {
+    super(`HTTP ${status}: ${code}`);
+  }
+}
+
+// Dipanggil saat sesi habis / tidak valid (401) supaya App kembali ke layar login.
+let onUnauthorized: () => void = () => {};
+export const setUnauthorizedHandler = (fn: () => void) => {
+  onUnauthorized = fn;
+};
+
 async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, {
     ...init,
+    credentials: 'same-origin',
     headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401 && !String(input).endsWith('/auth/login')) onUnauthorized();
+    throw new ApiError(res.status, String(body.error ?? res.statusText), body);
   }
   return (await res.json()) as T;
 }
+
+// ─── Auth ──────────────────────────────────────────────────────────
+
+export async function login(username: string, password: string): Promise<User> {
+  const { user } = await jsonFetch<{ user: User }>(`${BASE}/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  return user;
+}
+
+export async function logout(): Promise<void> {
+  await jsonFetch(`${BASE}/auth/logout`, { method: 'POST' });
+}
+
+// null = belum login.
+export async function getMe(): Promise<User | null> {
+  const res = await fetch(`${BASE}/auth/me`, { credentials: 'same-origin' });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new ApiError(res.status, res.statusText);
+  return ((await res.json()) as { user: User }).user;
+}
+
+// ─── Pengguna (admin) ──────────────────────────────────────────────
+
+export type UserRow = User & { active: number; created_at: string };
+
+export const listUsers = () => jsonFetch<UserRow[]>(`${BASE}/users`);
+
+export const createUser = (u: { username: string; name: string; role: Role; password: string }) =>
+  jsonFetch<{ id: number }>(`${BASE}/users`, { method: 'POST', body: JSON.stringify(u) });
+
+export const updateUser = (
+  id: number,
+  patch: Partial<{ name: string; role: Role; password: string; active: boolean }>,
+) => jsonFetch<UserRow>(`${BASE}/users/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 
 export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder> {
   return jsonFetch<CreatedOrder>(`${BASE}/orders`, {
@@ -51,10 +105,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
       })),
       payment_method: input.paymentMethod,
       cash_received: input.cashReceived,
-      transfer_proof: input.transferProof
+      payment_proof: input.paymentProof
         ? {
-            mime: input.transferProof.mime,
-            data: input.transferProof.dataUrl.slice(input.transferProof.dataUrl.indexOf(',') + 1),
+            mime: input.paymentProof.mime,
+            data: input.paymentProof.dataUrl.slice(input.paymentProof.dataUrl.indexOf(',') + 1),
           }
         : undefined,
       type: input.type ?? 'dine-in',
@@ -75,6 +129,7 @@ export type OrderRow = {
   status: string;
   created_at: string;
   has_proof: number;
+  operator_name: string | null;
 };
 
 export type SalesSummary = {

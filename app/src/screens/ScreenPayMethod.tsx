@@ -108,7 +108,7 @@ export function ScreenPayMethod() {
       case 'cash':
         return 'Lanjut ke Pembayaran Tunai';
       case 'qris':
-        return 'Konfirmasi Bayar QRIS';
+        return 'Lanjut ke Pembayaran QRIS';
       case 'transfer-bca':
         return 'Lanjut ke Transfer BCA';
     }

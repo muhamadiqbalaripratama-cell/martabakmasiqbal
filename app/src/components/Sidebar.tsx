@@ -4,18 +4,29 @@ import { useApp } from '../state/store';
 import type { Screen } from '../types';
 
 // `screen` = item bisa diklik. Item tanpa screen belum punya halaman.
-type Item = { id: string; label: string; icon: string; screen?: Screen };
+// `adminOnly` = disembunyikan untuk operator.
+type Item = { id: string; label: string; icon: string; screen?: Screen; adminOnly?: boolean };
 
 const ITEMS: Item[] = [
   { id: 'menu', label: 'Menu', icon: 'menu', screen: 'menu' },
   { id: 'orders', label: 'Pesanan', icon: 'receipt' },
   { id: 'tables', label: 'Meja', icon: 'table' },
-  { id: 'stats', label: 'Laporan', icon: 'stats', screen: 'report' },
+  { id: 'stats', label: 'Laporan', icon: 'stats', screen: 'report', adminOnly: true },
   { id: 'people', label: 'Pelanggan', icon: 'people' },
+  { id: 'users', label: 'Pengguna', icon: 'user', screen: 'users', adminOnly: true },
 ];
 
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('') || '?';
+
 export function Sidebar({ active = 'menu' }: { active?: string }) {
-  const { goto } = useApp();
+  const { goto, user, logout } = useApp();
+  const items = ITEMS.filter((it) => !it.adminOnly || user.role === 'admin');
   return (
     <aside
       style={{
@@ -32,7 +43,7 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
       <Logo size={44} />
       <div style={{ height: 28 }} />
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', padding: '0 12px' }}>
-        {ITEMS.map((it) => {
+        {items.map((it) => {
           const on = it.id === active;
           return (
             <div
@@ -76,20 +87,28 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
       </nav>
       <div style={{ flex: 1 }} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-        <div
+        <button
+          onClick={() => {
+            if (window.confirm(`Keluar dari akun ${user.name}?`)) logout();
+          }}
+          title="Keluar"
+          aria-label="Keluar"
           style={{
             width: 44,
             height: 44,
             borderRadius: 12,
+            border: 0,
             background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
             color: 'var(--ink-3)',
+            cursor: 'pointer',
           }}
         >
-          <Icon name="settings" size={20} />
-        </div>
+          <Icon name="logout" size={20} />
+        </button>
         <div
+          title={`${user.name} (${user.role === 'admin' ? 'Admin' : 'Operator'})`}
           style={{
             width: 44,
             height: 44,
@@ -103,7 +122,10 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
             boxShadow: '0 0 0 2px var(--surface), 0 0 0 3px var(--hairline)',
           }}
         >
-          IQ
+          {initials(user.name)}
+        </div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          {user.role === 'admin' ? 'Admin' : 'Operator'}
         </div>
       </div>
     </aside>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppCtx, type AppAPI, type AppState } from './state/store';
-import type { CartLine, MenuItem, PaymentMethod, Screen, TransferProof } from './types';
-import { createOrder, getTodayCount } from './services/api';
+import type { CartLine, MenuItem, PaymentMethod, PaymentProof, Screen, User } from './types';
+import { createOrder, getMe, getTodayCount, logout as apiLogout, setUnauthorizedHandler } from './services/api';
 import { ScreenMenu } from './screens/ScreenMenu';
 import { ScreenCart } from './screens/ScreenCart';
 import { ScreenPayMethod } from './screens/ScreenPayMethod';
@@ -10,6 +10,9 @@ import { ScreenQRIS } from './screens/ScreenQRIS';
 import { ScreenTransfer } from './screens/ScreenTransfer';
 import { ScreenReceipt } from './screens/ScreenReceipt';
 import { ScreenReport } from './screens/ScreenReport';
+import { ScreenUsers } from './screens/ScreenUsers';
+import { ScreenLogin } from './screens/ScreenLogin';
+import { needsProof } from './data/payment';
 
 const SEED_LINES: CartLine[] = [
   {
@@ -44,6 +47,9 @@ const SEED_LINES: CartLine[] = [
   },
 ];
 
+// Layar khusus admin; operator yang mencoba membuka diarahkan ke Menu.
+const ADMIN_SCREENS: Screen[] = ['report', 'users'];
+
 const padOrderNo = (n: number) => String(Math.max(0, n)).padStart(4, '0');
 
 const initialState = (todayCount = 0, lines = SEED_LINES): AppState => ({
@@ -52,13 +58,46 @@ const initialState = (todayCount = 0, lines = SEED_LINES): AppState => ({
   customizing: null,
   paymentMethod: 'qris',
   cashReceived: 0,
-  transferProof: null,
+  paymentProof: null,
   orderNo: padOrderNo(todayCount + 1),
   todayCount,
   submitting: false,
 });
 
+type Auth = { status: 'loading' } | { status: 'out' } | { status: 'in'; user: User };
+
 export function App() {
+  const [auth, setAuth] = useState<Auth>({ status: 'loading' });
+
+  useEffect(() => {
+    // Sesi habis / dicabut admin → balik ke layar login.
+    setUnauthorizedHandler(() => setAuth({ status: 'out' }));
+    getMe()
+      .then((user) => setAuth(user ? { status: 'in', user } : { status: 'out' }))
+      .catch(() => setAuth({ status: 'out' }));
+  }, []);
+
+  const logout = useCallback(async () => {
+    await apiLogout().catch(() => {});
+    setAuth({ status: 'out' });
+  }, []);
+
+  return (
+    <Stage>
+      {auth.status === 'in' ? (
+        // key: ganti user = keranjang & state kasir mulai dari nol.
+        <PosApp key={auth.user.id} user={auth.user} onLogout={logout} />
+      ) : (
+        <ScreenLogin
+          checking={auth.status === 'loading'}
+          onLogin={(user) => setAuth({ status: 'in', user })}
+        />
+      )}
+    </Stage>
+  );
+}
+
+function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> }) {
   const [state, setState] = useState<AppState>(() => initialState());
 
   // Pull today's count on mount so the menu badge + order_no preview match
@@ -76,7 +115,11 @@ export function App() {
     };
   }, []);
 
-  const goto = useCallback((s: Screen) => setState((p) => ({ ...p, screen: s })), []);
+  const goto = useCallback(
+    (s: Screen) =>
+      setState((p) => ({ ...p, screen: ADMIN_SCREENS.includes(s) && user.role !== 'admin' ? 'menu' : s })),
+    [user.role],
+  );
   const openCustomize = useCallback(
     (item: MenuItem) => setState((p) => ({ ...p, customizing: item })),
     [],
@@ -102,8 +145,10 @@ export function App() {
 
   const clearCart = useCallback(() => setState((p) => ({ ...p, lines: [] })), []);
 
+  // Bukti bayar melekat ke metode — ganti metode = bukti lama dibuang.
   const setPaymentMethod = useCallback(
-    (m: PaymentMethod) => setState((p) => ({ ...p, paymentMethod: m })),
+    (m: PaymentMethod) =>
+      setState((p) => ({ ...p, paymentMethod: m, paymentProof: m === p.paymentMethod ? p.paymentProof : null })),
     [],
   );
 
@@ -112,14 +157,14 @@ export function App() {
     [],
   );
 
-  const setTransferProof = useCallback(
-    (tp: TransferProof | null) => setState((p) => ({ ...p, transferProof: tp })),
+  const setPaymentProof = useCallback(
+    (pp: PaymentProof | null) => setState((p) => ({ ...p, paymentProof: pp })),
     [],
   );
 
-  // POST the order to the backend. Tunai/QRIS never block on this — on failure
-  // the caller still navigates to the receipt with the locally-predicted order
-  // number. Transfer checks the result so the proof image isn't silently lost.
+  // POST the order to the backend. Tunai never blocks on this — on failure the
+  // caller still navigates to the receipt with the locally-predicted order
+  // number. QRIS/Transfer check the result so the proof image isn't lost.
   const submitOrder = useCallback(async () => {
     setState((p) => ({ ...p, submitting: true }));
     try {
@@ -127,7 +172,7 @@ export function App() {
         lines: state.lines,
         paymentMethod: state.paymentMethod,
         cashReceived: state.cashReceived,
-        transferProof: state.paymentMethod === 'transfer-bca' ? state.transferProof : null,
+        paymentProof: needsProof(state.paymentMethod) ? state.paymentProof : null,
       });
       setState((p) => ({
         ...p,
@@ -141,7 +186,7 @@ export function App() {
       setState((p) => ({ ...p, submitting: false }));
       return false;
     }
-  }, [state.lines, state.paymentMethod, state.cashReceived, state.transferProof]);
+  }, [state.lines, state.paymentMethod, state.cashReceived, state.paymentProof]);
 
   const startNewOrder = useCallback(() => {
     // Re-fetch today's count to keep the order number preview accurate.
@@ -154,6 +199,8 @@ export function App() {
   const api: AppAPI = useMemo(
     () => ({
       state,
+      user,
+      logout: onLogout,
       goto,
       openCustomize,
       closeCustomize,
@@ -163,12 +210,14 @@ export function App() {
       clearCart,
       setPaymentMethod,
       setCashReceived,
-      setTransferProof,
+      setPaymentProof,
       startNewOrder,
       submitOrder,
     }),
     [
       state,
+      user,
+      onLogout,
       goto,
       openCustomize,
       closeCustomize,
@@ -178,7 +227,7 @@ export function App() {
       clearCart,
       setPaymentMethod,
       setCashReceived,
-      setTransferProof,
+      setPaymentProof,
       startNewOrder,
       submitOrder,
     ],
@@ -186,9 +235,7 @@ export function App() {
 
   return (
     <AppCtx.Provider value={api}>
-      <Stage>
-        <ScreenSwitcher screen={state.screen} />
-      </Stage>
+      <ScreenSwitcher screen={state.screen} />
     </AppCtx.Provider>
   );
 }
@@ -211,6 +258,8 @@ function ScreenSwitcher({ screen }: { screen: Screen }) {
       return <ScreenReceipt />;
     case 'report':
       return <ScreenReport />;
+    case 'users':
+      return <ScreenUsers />;
   }
 }
 

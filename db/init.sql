@@ -51,9 +51,36 @@ CREATE TABLE IF NOT EXISTS order_lines (
   INDEX idx_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bukti transfer (dan lampiran lain) per pesanan. Disimpan di DB supaya
--- ikut ter-backup lewat mysqldump. Backend juga membuat tabel ini saat start
--- (ensureSchema) untuk database yang sudah ada sebelumnya.
+-- Tabel di bawah juga dibuat otomatis oleh backend saat start (ensureSchema)
+-- untuk database yang sudah ada sebelumnya.
+
+-- Akun login. Akun pertama dibuat backend dari env ADMIN_USERNAME/PASSWORD.
+CREATE TABLE IF NOT EXISTS users (
+  id             INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  username       VARCHAR(64)  NOT NULL UNIQUE,
+  name           VARCHAR(128) NOT NULL,
+  role           ENUM('operator', 'admin') NOT NULL,
+  password_hash  VARCHAR(255) NOT NULL,
+  active         TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  CHAR(64)   NOT NULL PRIMARY KEY,
+  user_id     INT        NOT NULL,
+  expires_at  DATETIME   NOT NULL,
+  created_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Operator yang mencatat pesanan.
+ALTER TABLE orders
+  ADD COLUMN created_by INT NULL AFTER status,
+  ADD CONSTRAINT fk_orders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+
+-- Bukti pembayaran (QRIS / transfer) per pesanan. Disimpan di DB supaya
+-- ikut ter-backup lewat mysqldump.
 CREATE TABLE IF NOT EXISTS order_attachments (
   id          INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
   order_id    INT          NOT NULL,
