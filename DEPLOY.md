@@ -4,7 +4,7 @@ Aplikasi POS Martabak Mas Iqbal dengan stack:
 
 - **Web** — React SPA + Nginx — port **8899**
 - **API** — Node + Express + TypeScript — internal only (proxied via nginx)
-- **MySQL 8.0** — port **3321** (host) → 3306 (container)
+- **MySQL 8.0** — port **3321**, hanya di `127.0.0.1` VPS (tidak terbuka ke internet) → 3306 (container)
 
 ## Struktur
 
@@ -52,7 +52,25 @@ docker compose logs -f   # tail logs
 
 - **Frontend**: `http://<vps-ip>:8899`
 - **API health**: `http://<vps-ip>:8899/api/health` → `{"ok":true,"db":"up"}`
-- **MySQL** (untuk DBeaver/admin): `<vps-ip>:3321`, user/password sesuai `.env`
+- **MySQL** (untuk DBeaver/admin): **tidak bisa** diakses langsung dari internet. Gunakan SSH tunnel (lihat di bawah).
+
+#### Akses MySQL dari laptop (DBeaver) via SSH tunnel
+
+Port 3321 hanya terbuka di `127.0.0.1` VPS, jadi koneksi harus lewat SSH:
+
+```bash
+# di laptop — biarkan terminal ini terbuka selama memakai DBeaver
+ssh -N -L 3321:127.0.0.1:3321 user@<vps-ip>
+```
+
+Lalu di DBeaver: host `127.0.0.1`, port `3321`, user/password sesuai `.env`.
+Atau pakai tab **SSH** di pengaturan koneksi DBeaver (host VPS + user SSH), dengan host database `127.0.0.1` port `3321`.
+
+Cek dari VPS bahwa MySQL tidak terbuka ke luar:
+
+```bash
+sudo ss -tlnp | grep 3321   # harus 127.0.0.1:3321, bukan 0.0.0.0:3321
+```
 
 ### 4. Reverse proxy + HTTPS (opsional, dianjurkan)
 

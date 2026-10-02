@@ -9,8 +9,9 @@ services:
       MYSQL_USER: ${MYSQL_USER:-pos}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pospass}
     ports:
-      # Host:Container — host port 3321 untuk akses dari luar (mis. dbeaver)
-      - "3321:3306"
+      # Hanya bisa diakses dari VPS itu sendiri (127.0.0.1), TIDAK dari internet.
+      # Untuk DBeaver dari laptop, pakai SSH tunnel — lihat DEPLOY.md.
+      - "127.0.0.1:3321:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
