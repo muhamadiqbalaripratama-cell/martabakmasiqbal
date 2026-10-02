@@ -28,6 +28,9 @@ services:
     build:
       context: ./backend
     image: martabak-pos-api:latest
+    # Selalu build ulang saat `docker compose up`, supaya image lama tidak
+    # terpakai lagi setelah kode diperbarui (lapisan yang tidak berubah tetap di-cache).
+    pull_policy: build
     container_name: martabak-api
     restart: unless-stopped
     environment:
@@ -54,6 +57,9 @@ services:
     build:
       context: ./app
     image: martabak-pos-web:latest
+    # Selalu build ulang saat `docker compose up`, supaya image lama tidak
+    # terpakai lagi setelah kode diperbarui (lapisan yang tidak berubah tetap di-cache).
+    pull_policy: build
     container_name: martabak-web
     restart: unless-stopped
     ports:

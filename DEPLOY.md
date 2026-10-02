@@ -116,9 +116,20 @@ cat backup.sql | docker compose exec -T mysql mysql -u root -p"$MYSQL_ROOT_PASSW
 ### Update aplikasi
 
 ```bash
-git pull
+git pull                      # atau: ekstrak ZIP terbaru, timpa folder lama
 docker compose up -d --build
 ```
+
+Lalu di browser tekan **Ctrl + F5** (atau Cmd + Shift + R di Mac) supaya file lama di cache browser tidak dipakai.
+
+Kalau tampilan masih versi lama, build ulang tanpa cache:
+
+```bash
+docker compose build --no-cache web api
+docker compose up -d --force-recreate web api
+```
+
+> Kalau ZIP diekstrak ke **folder baru**, jalankan `docker compose down` dulu di folder lama — nama container sama, jadi container lama bisa tetap berjalan.
 
 Volume `mysql-data` persist antar restart — data pesanan aman.
 
