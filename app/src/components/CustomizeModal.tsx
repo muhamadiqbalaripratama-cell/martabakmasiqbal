@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 import { Btn } from './Btn';
-import { fmtRp, SIZES, TOPPINGS, DONENESS } from '../data/menu';
+import { CATEGORY_LABEL, fmtRp, OPTION_GROUPS } from '../data/menu';
 import type { MenuItem, CartLine } from '../types';
 import { useApp } from '../state/store';
 
@@ -181,43 +181,48 @@ function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', soldO
 }
 
 export function CustomizeModal({ item }: { item: MenuItem }) {
-  const { closeCustomize, addLine } = useApp();
-  const [sizeId, setSizeId] = useState<'mini' | 'reguler' | 'jumbo'>('reguler');
-  const [toppingIds, setToppingIds] = useState<string[]>(['t1', 't5']);
-  const [donenessId, setDonenessId] = useState<'standar' | 'crispy' | 'extra'>('standar');
-  const [qty, setQty] = useState(1);
-  const [note, setNote] = useState('Potong jadi 16, dibungkus terpisah. Tidak pakai susu di luar.');
-
-  const size = SIZES.find((s) => s.id === sizeId)!;
-  const doneness = DONENESS.find((d) => d.id === donenessId)!;
-  const toppings = TOPPINGS.filter((t) => toppingIds.includes(t.id));
-  const unitPrice = useMemo(
-    () => item.price + size.price + toppings.reduce((s, t) => s + t.price, 0),
-    [item.price, size.price, toppings],
+  const { state, closeCustomize, addLine } = useApp();
+  const groups = OPTION_GROUPS[item.category] ?? [];
+  // Pilihan per grup opsi: { size: ['reguler'], topping: ['t1'], ... }
+  const [picks, setPicks] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(groups.map((g) => [g.id, [...g.defaults]])),
   );
+  const [qty, setQty] = useState(1);
+  const [note, setNote] = useState('');
+
+  const chosen = useMemo(
+    () => groups.map((g) => ({ g, opts: g.options.filter((o) => picks[g.id]?.includes(o.id)) })),
+    [groups, picks],
+  );
+  const unitPrice = item.price + chosen.reduce((s, c) => s + c.opts.reduce((t, o) => t + o.price, 0), 0);
   const subtotal = unitPrice * qty;
 
-  const toggleTopping = (id: string) => {
-    setToppingIds((cur) => {
-      if (cur.includes(id)) return cur.filter((x) => x !== id);
-      if (cur.length >= 3) return cur;
-      return [...cur, id];
+  const pick = (groupId: string, optId: string, kind: 'single' | 'multi', max = Infinity) => {
+    setPicks((cur) => {
+      const sel = cur[groupId] ?? [];
+      if (kind === 'single') return { ...cur, [groupId]: [optId] };
+      if (sel.includes(optId)) return { ...cur, [groupId]: sel.filter((x) => x !== optId) };
+      if (sel.length >= max) return cur;
+      return { ...cur, [groupId]: [...sel, optId] };
     });
   };
 
   const handleAdd = () => {
-    const modsParts: string[] = [size.label];
-    toppings.forEach((t) => modsParts.push('+' + t.label));
-    modsParts.push(doneness.label);
+    const modsParts: string[] = [];
+    for (const { g, opts } of chosen) {
+      for (const o of opts) modsParts.push(g.kind === 'multi' ? '+' + o.label : o.label);
+    }
+    if (note.trim()) modsParts.push(`Catatan: ${note.trim()}`);
     const line: CartLine = {
       id: `${item.id}-${Date.now()}`,
       menuId: item.id,
       name: item.name,
-      mods: modsParts.join(' · '),
+      mods: modsParts.join(' · ') || undefined,
       qty,
       unitPrice,
       monogram: item.monogram,
       accent: item.accent,
+      imageUrl: item.imageUrl,
     };
     addLine(line);
     closeCustomize();
@@ -250,23 +255,34 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             position: 'relative',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                padding: '5px 10px',
-                borderRadius: 6,
-                background: 'var(--green)',
-                color: 'var(--yellow)',
-              }}
-            >
-              ★ FAVORIT KASIR
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--ink-2)' }}>SKU MMI-{item.id.toUpperCase()}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            {item.hot ? (
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  background: 'var(--green)',
+                  color: 'var(--yellow)',
+                }}
+              >
+                ★ FAVORIT
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>{CATEGORY_LABEL[item.category]}</div>
+            )}
+            {item.tag && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-2)' }}>{item.tag}</div>}
           </div>
-          <div className="customize-hero-art" style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
+          <div className="customize-hero-art" style={{ flex: 1, display: 'grid', placeItems: 'center', padding: '16px 0' }}>
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                style={{ width: '100%', aspectRatio: '16 / 10', objectFit: 'cover', borderRadius: 16, boxShadow: 'var(--shadow-md)' }}
+              />
+            ) : (
             <div
               style={{
                 width: 220,
@@ -285,6 +301,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             >
               {item.monogram}
             </div>
+            )}
           </div>
           <div>
             <div
@@ -300,7 +317,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
               {item.name}
             </div>
             <div className="customize-hero-desc" style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>
-              Adonan tradisional Bangka, mentega Wijsman, taburan keju Anchor & cokelat Toblerone leleh.
+              {item.description}
             </div>
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span
@@ -314,16 +331,6 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                 }}
               >
                 {fmtRp(item.price)}
-              </span>
-              <span
-                className="tnum"
-                style={{
-                  fontSize: 13,
-                  color: 'var(--ink-3)',
-                  textDecoration: 'line-through',
-                }}
-              >
-                {fmtRp(Math.round(item.price * 1.18))}
               </span>
             </div>
           </div>
@@ -341,7 +348,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             }}
           >
             <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-              Sesuaikan pesanan untuk <b style={{ color: 'var(--ink)' }}>Pesanan #0048</b>
+              Sesuaikan pesanan untuk <b style={{ color: 'var(--ink)' }}>Pesanan #{state.orderNo}</b>
             </div>
             <button
               onClick={closeCustomize}
@@ -361,51 +368,48 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             </button>
           </div>
           <div className="pad" style={{ flex: 1, padding: '20px 24px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <Sect label="Pilih ukuran" required>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
-                {SIZES.map((s) => (
-                  <OptCard
-                    key={s.id}
-                    label={s.label}
-                    sub={s.sub}
-                    price={s.price}
-                    selected={sizeId === s.id}
-                    onClick={() => setSizeId(s.id)}
-                  />
-                ))}
-              </div>
-            </Sect>
+            {groups.map((g) =>
+              g.kind === 'single' ? (
+                <Sect key={g.id} label={g.label} required>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                    {g.options.map((o) => (
+                      <OptCard
+                        key={o.id}
+                        label={o.label}
+                        sub={o.sub}
+                        // Grup tanpa biaya tambahan (mis. level pedas) tidak perlu label harga.
+                        price={g.options.some((x) => x.price > 0) ? o.price : undefined}
+                        selected={picks[g.id]?.includes(o.id)}
+                        onClick={() => pick(g.id, o.id, 'single')}
+                      />
+                    ))}
+                  </div>
+                </Sect>
+              ) : (
+                <Sect key={g.id} label={g.label} hint={`Maks. ${g.max} pilihan · ${picks[g.id]?.length ?? 0} dipilih`}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+                    {g.options.map((o) => (
+                      <ToppingTile
+                        key={o.id}
+                        label={o.label}
+                        price={o.price}
+                        monogram={o.monogram ?? o.label[0]}
+                        accent={o.accent}
+                        soldOut={o.soldOut}
+                        selected={picks[g.id]?.includes(o.id)}
+                        onClick={() => pick(g.id, o.id, 'multi', g.max)}
+                      />
+                    ))}
+                  </div>
+                </Sect>
+              ),
+            )}
 
-            <Sect label="Topping ekstra" hint={`Maks. 3 pilihan · ${toppingIds.length} dipilih`}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-                {TOPPINGS.map((t) => (
-                  <ToppingTile
-                    key={t.id}
-                    label={t.label}
-                    price={t.price}
-                    monogram={t.monogram}
-                    accent={t.accent}
-                    soldOut={t.soldOut}
-                    selected={toppingIds.includes(t.id)}
-                    onClick={() => toggleTopping(t.id)}
-                  />
-                ))}
-              </div>
-            </Sect>
-
-            <Sect label="Tingkat kematangan">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
-                {DONENESS.map((d) => (
-                  <OptCard
-                    key={d.id}
-                    label={d.label}
-                    sub={d.sub}
-                    selected={donenessId === d.id}
-                    onClick={() => setDonenessId(d.id)}
-                  />
-                ))}
-              </div>
-            </Sect>
+            {item.category === 'paket' && item.description && (
+              <Sect label="Isi paket">
+                <div style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.5 }}>{item.description}</div>
+              </Sect>
+            )}
 
             <Sect label="Catatan untuk dapur">
               <div
@@ -424,6 +428,8 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                 <Icon name="note" size={16} color="var(--ink-3)" />
                 <textarea
                   value={note}
+                  placeholder="Contoh: potong 16, dibungkus terpisah"
+                  maxLength={200}
                   onChange={(e) => setNote(e.target.value)}
                   style={{
                     flex: 1,

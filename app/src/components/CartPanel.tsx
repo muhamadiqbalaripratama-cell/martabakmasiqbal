@@ -45,22 +45,6 @@ export function CartPanel({
               {type} · {itemCount} item
             </div>
           </div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 10px',
-              borderRadius: 999,
-              background: 'var(--green-tint)',
-              color: 'var(--green)',
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            <Icon name="dot" size={8} color="var(--green)" />
-            Antrian #04
-          </div>
         </div>
       </div>
 
@@ -105,6 +89,7 @@ export function CartPanel({
               unitPrice={l.unitPrice}
               accent={l.accent}
               monogram={l.monogram}
+              imageUrl={l.imageUrl}
               onInc={() => updateQty(l.id, 1)}
               onDec={() => updateQty(l.id, -1)}
             />

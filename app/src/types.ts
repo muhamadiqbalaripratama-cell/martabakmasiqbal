@@ -9,20 +9,36 @@ export type Screen =
   | 'transfer'
   | 'receipt'
   | 'report'
-  | 'users';
+  | 'users'
+  | 'menu-admin';
 
 export type PaymentMethod = 'cash' | 'qris' | 'transfer-bca';
+
+export type MenuCategory = 'manis' | 'asin' | 'drink' | 'paket';
 
 export type MenuItem = {
   id: string;
   name: string;
+  description?: string;
   price: number;
   monogram: string;
   accent: Accent;
-  category: 'manis' | 'asin';
+  category: MenuCategory;
   tag?: string;
   hot?: boolean;
   soldOut?: boolean;
+  active?: boolean;
+  // URL foto (sudah termasuk ?v= untuk cache-busting); kosong = pakai monogram.
+  imageUrl?: string;
+};
+
+export type OrderType = 'dine-in' | 'take-away';
+
+// Info pesanan yang diisi kasir di layar Review Pesanan.
+export type OrderMeta = {
+  type: OrderType;
+  tableNo: string;
+  customerName: string;
 };
 
 export type CartLine = {
@@ -34,6 +50,7 @@ export type CartLine = {
   unitPrice: number;
   monogram: string;
   accent: Accent;
+  imageUrl?: string;
 };
 
 // Bukti pembayaran (QRIS / transfer) yang sudah dikompres di browser.

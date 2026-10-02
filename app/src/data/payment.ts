@@ -25,7 +25,7 @@ const PROOF_MAX_INPUT_BYTES = 20 * 1024 * 1024;
 
 // Foto HP bisa 3–8 MB. Perkecil ke sisi terpanjang 1600px dan simpan sebagai
 // JPEG supaya upload cepat dan hemat ruang DB — teks nominal tetap terbaca.
-export async function compressProofImage(file: File): Promise<PaymentProof> {
+export async function compressProofImage(file: File, maxSide = PROOF_MAX_SIDE): Promise<PaymentProof> {
   if (!file.type.startsWith('image/')) throw new Error('File harus berupa gambar (JPG/PNG).');
   if (file.size > PROOF_MAX_INPUT_BYTES) throw new Error('Ukuran gambar maksimal 20 MB.');
 
@@ -37,7 +37,7 @@ export async function compressProofImage(file: File): Promise<PaymentProof> {
       el.onerror = () => reject(new Error('Gambar tidak bisa dibaca.'));
       el.src = url;
     });
-    const scale = Math.min(1, PROOF_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);

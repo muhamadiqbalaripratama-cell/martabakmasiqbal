@@ -218,6 +218,11 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
+/* Kolom cari di dalam konten — hanya saat kolom cari TopBar disembunyikan. */
+.search-inline {
+  display: none;
+}
+
 /* Hanya tampil di HP. */
 .only-mobile {
   display: none !important;
@@ -246,6 +251,9 @@ button:focus-visible {
   }
   .topbar-search {
     display: none !important;
+  }
+  .search-inline {
+    display: block;
   }
   .customize-hero {
     width: 300px;
@@ -473,4 +481,28 @@ button:focus-visible {
   pointer-events: none;
   user-select: none;
   letter-spacing: 0.04em;
+}
+
+/* Cetak struk: hanya kertas struk yang dicetak (printer thermal 58/80 mm). */
+@media print {
+  @page {
+    margin: 4mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .receipt-paper,
+  .receipt-paper * {
+    visibility: visible;
+  }
+  .receipt-paper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 72mm !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
 }

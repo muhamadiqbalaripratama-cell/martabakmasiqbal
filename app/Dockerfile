@@ -10,6 +10,8 @@ RUN npm ci --include=dev
 # Build the SPA
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
+# File statis apa adanya (mis. qris-toko.png)
+COPY public ./public
 RUN npm run build
 
 # ─── Stage 2: serve ─────────────────────────────────────────────

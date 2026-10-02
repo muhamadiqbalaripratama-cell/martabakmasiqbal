@@ -77,16 +77,36 @@ export async function ensureSchema(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
-  // MySQL 8.0 belum mendukung ADD COLUMN IF NOT EXISTS → cek manual.
-  const [cols] = await pool.query<RowDataPacket[]>(
-    `SELECT 1 FROM information_schema.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'created_by'`,
-  );
-  if (cols.length === 0) {
+  if (!(await hasColumn('orders', 'created_by'))) {
     await pool.query(`
       ALTER TABLE orders
         ADD COLUMN created_by INT NULL AFTER status,
         ADD CONSTRAINT fk_orders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
     `);
   }
+
+  // Menu: deskripsi, foto, urutan, dan status aktif (dihapus = nonaktif).
+  const menuCols: [string, string][] = [
+    ['description', 'TEXT NULL AFTER name'],
+    ['image_mime', 'VARCHAR(32) NULL'],
+    ['image_data', 'MEDIUMBLOB NULL'],
+    // Diisi saat foto diganti/dihapus: dipakai untuk cache-busting URL foto
+    // dan menandai foto bawaan tidak perlu dipasang ulang.
+    ['image_updated_at', 'TIMESTAMP NULL DEFAULT NULL'],
+    ['active', 'TINYINT(1) NOT NULL DEFAULT 1'],
+    ['sort_order', 'INT NOT NULL DEFAULT 0'],
+  ];
+  for (const [col, ddl] of menuCols) {
+    if (!(await hasColumn('menu_items', col))) await pool.query(`ALTER TABLE menu_items ADD COLUMN ${col} ${ddl}`);
+  }
+}
+
+// MySQL 8.0 belum mendukung ADD COLUMN IF NOT EXISTS → cek manual.
+async function hasColumn(table: string, column: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column],
+  );
+  return rows.length > 0;
 }

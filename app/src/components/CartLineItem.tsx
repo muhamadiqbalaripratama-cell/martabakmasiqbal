@@ -1,6 +1,7 @@
 import { Icon } from './Icon';
 import { fmtRp } from '../data/menu';
 import type { Accent } from '../types';
+import { Thumb } from './Thumb';
 
 type Props = {
   name: string;
@@ -9,21 +10,9 @@ type Props = {
   unitPrice: number;
   accent?: Accent;
   monogram?: string;
+  imageUrl?: string;
   onInc?: () => void;
   onDec?: () => void;
-};
-
-const BG: Record<Accent, string> = {
-  green: '#dfe9d8',
-  yellow: '#fff1b8',
-  cream: '#f4e6c5',
-  cocoa: '#e9d8c5',
-};
-const INK: Record<Accent, string> = {
-  green: 'var(--green)',
-  yellow: '#7a5a08',
-  cream: '#6b4f10',
-  cocoa: '#5a3a18',
 };
 
 const qtyBtn = {
@@ -37,7 +26,7 @@ const qtyBtn = {
   cursor: 'pointer',
 } as const;
 
-export function CartLineItem({ name, mods, qty, unitPrice, accent = 'green', monogram = 'M', onInc, onDec }: Props) {
+export function CartLineItem({ name, mods, qty, unitPrice, accent = 'green', monogram = 'M', imageUrl, onInc, onDec }: Props) {
   return (
     <div
       style={{
@@ -47,23 +36,7 @@ export function CartLineItem({ name, mods, qty, unitPrice, accent = 'green', mon
         borderBottom: '1px solid var(--hairline)',
       }}
     >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          flexShrink: 0,
-          borderRadius: 10,
-          background: BG[accent],
-          color: INK[accent],
-          display: 'grid',
-          placeItems: 'center',
-          fontFamily: 'var(--font-display)',
-          fontWeight: 700,
-          fontSize: 22,
-        }}
-      >
-        {monogram}
-      </div>
+      <Thumb imageUrl={imageUrl} monogram={monogram} accent={accent} size={44} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.25 }}>{name}</div>
         {mods && (

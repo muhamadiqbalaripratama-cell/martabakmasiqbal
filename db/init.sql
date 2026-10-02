@@ -10,12 +10,18 @@ CREATE TABLE IF NOT EXISTS menu_items (
   id          VARCHAR(16)  NOT NULL PRIMARY KEY,
   category    ENUM('manis', 'asin', 'drink', 'paket') NOT NULL,
   name        VARCHAR(255) NOT NULL,
+  description TEXT         NULL,
   price       INT          NOT NULL,
   monogram    VARCHAR(4)   NOT NULL,
   accent      ENUM('green', 'yellow', 'cream', 'cocoa') NOT NULL,
   tag         VARCHAR(64)  NULL,
   hot         TINYINT(1)   NOT NULL DEFAULT 0,
   sold_out    TINYINT(1)   NOT NULL DEFAULT 0,
+  image_mime  VARCHAR(32)  NULL,
+  image_data  MEDIUMBLOB   NULL,
+  image_updated_at TIMESTAMP NULL DEFAULT NULL,
+  active      TINYINT(1)   NOT NULL DEFAULT 1,
+  sort_order  INT          NOT NULL DEFAULT 0,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -93,20 +99,6 @@ CREATE TABLE IF NOT EXISTS order_attachments (
   UNIQUE KEY uniq_order_kind (order_id, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ─── Seed: menu_items ────────────────────────────────────────────
--- Sama dengan src/data/menu.ts di frontend supaya cocok kalau frontend
--- nanti fetch dari API.
-
-INSERT INTO menu_items (id, category, name, price, monogram, accent, tag, hot, sold_out) VALUES
-  ('m1', 'manis', 'Martabak Manis Cokelat Keju',          45000, 'C', 'cocoa',  NULL,      1, 0),
-  ('m2', 'manis', 'Martabak Manis Pisang Cokelat',        50000, 'P', 'cream',  NULL,      0, 0),
-  ('m3', 'manis', 'Martabak Manis Nutella Tiramisu',      65000, 'N', 'cocoa',  'Premium', 0, 0),
-  ('m4', 'manis', 'Martabak Manis Greentea Keju',         55000, 'G', 'green',  NULL,      0, 0),
-  ('m5', 'manis', 'Martabak Manis Spesial Iqbal',         75000, 'S', 'yellow', NULL,      1, 0),
-  ('m6', 'manis', 'Martabak Manis Mini (12 pcs)',         38000, 'M', 'cream',  NULL,      0, 0),
-  ('m7', 'manis', 'Martabak Red Velvet Cheese',           60000, 'R', 'cocoa',  NULL,      0, 0),
-  ('m8', 'manis', 'Martabak Manis Original Wijen',        32000, 'W', 'yellow', NULL,      0, 1),
-  ('a1', 'asin',  'Martabak Telur Sapi',                  40000, 'T', 'yellow', NULL,      1, 0),
-  ('a2', 'asin',  'Martabak Telur Ayam',                  38000, 'A', 'yellow', NULL,      0, 0),
-  ('a3', 'asin',  'Martabak Telur Spesial 4 Telur',       58000, 'S', 'cream',  'Premium', 0, 0),
-  ('a4', 'asin',  'Martabak Telur Mini Sapi',             28000, 'M', 'cream',  NULL,      0, 0);
+-- ─── Menu ─────────────────────────────────────────────────────────
+-- Isi menu & foto bawaan dimasukkan oleh backend saat start
+-- (backend/src/seed/menu.ts + backend/assets/menu/*.jpg).

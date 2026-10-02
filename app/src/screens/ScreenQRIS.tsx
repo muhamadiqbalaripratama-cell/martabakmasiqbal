@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import { splitCols } from '../components/layout';
@@ -8,12 +8,14 @@ import { Logo } from '../components/Logo';
 import { QRBlock } from '../components/QRBlock';
 import { ProofUpload } from '../components/ProofUpload';
 import { fmtRp } from '../data/menu';
+import { STORE } from '../data/store';
 import { useApp, totalsFor } from '../state/store';
 
 export function ScreenQRIS() {
   const { state, goto, submitOrder, setPaymentProof } = useApp();
   const { total } = totalsFor(state.lines);
   const proof = state.paymentProof;
+  const hasRealQris = useImageExists(STORE.qrisImage);
   const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
@@ -119,9 +121,9 @@ export function ScreenQRIS() {
                         letterSpacing: '-0.02em',
                       }}
                     >
-                      Martabak Mas Iqbal
+                      {STORE.name}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>NMID ID1024 5566 7788</div>
+                    {STORE.qrisNmid && <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>NMID {STORE.qrisNmid}</div>}
                   </div>
                 </div>
                 <div
@@ -140,7 +142,40 @@ export function ScreenQRIS() {
               </div>
 
               <div style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
-                <QRBlock size={300} />
+                {hasRealQris ? (
+                  <img
+                    src={STORE.qrisImage}
+                    alt="QRIS Martabak Mas Iqbal"
+                    style={{ display: 'block', width: '100%', aspectRatio: '1', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <>
+                    <div style={{ opacity: 0.25 }}>
+                      <QRBlock size={300} />
+                    </div>
+                    <div
+                      role="alert"
+                      style={{
+                        position: 'absolute',
+                        inset: '20% 6%',
+                        borderRadius: 12,
+                        background: 'var(--danger-soft)',
+                        color: 'var(--danger)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        textAlign: 'center',
+                        padding: 12,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Gambar QRIS toko belum dipasang.
+                      <br />
+                      Simpan sebagai app/public/qris-toko.png
+                    </div>
+                  </>
+                )}
                 {/* Corner brackets */}
                 {[
                   { top: -8, left: -8, br: '8px 0 0 0' },
@@ -274,4 +309,16 @@ export function ScreenQRIS() {
       </div>
     </div>
   );
+}
+
+// true kalau gambar di URL ini berhasil dimuat (dipakai untuk QRIS asli toko).
+function useImageExists(url: string): boolean {
+  const [ok, setOk] = useState(false);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setOk(img.naturalWidth > 0);
+    img.onerror = () => setOk(false);
+    img.src = url;
+  }, [url]);
+  return ok;
 }

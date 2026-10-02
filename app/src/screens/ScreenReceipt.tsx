@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import { splitCols } from '../components/layout';
@@ -6,15 +7,37 @@ import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
 import { needsProof, PAYMENT_LABEL } from '../data/payment';
-import { useApp, totalsFor } from '../state/store';
+import { STORE } from '../data/store';
+import { orderMetaLabel, useApp, totalsFor } from '../state/store';
 
 export function ScreenReceipt() {
   const { state, startNewOrder, goto, user } = useApp();
-  const { sub, disc, tax, total, itemCount } = totalsFor(state.lines);
+  const { sub, disc, tax, total } = totalsFor(state.lines);
   const isCash = state.paymentMethod === 'cash';
   const paid = isCash ? state.cashReceived : total;
   const change = Math.max(0, paid - total);
   const methodLabel = PAYMENT_LABEL[state.paymentMethod];
+  // Waktu struk dibuat (tetap selama layar ini terbuka).
+  const [printedAt] = useState(() =>
+    new Date().toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }),
+  );
+  // Versi teks struk untuk WhatsApp / email.
+  const receiptText = [
+    `*${STORE.name}*`,
+    `Pesanan #${state.orderNo} · ${printedAt}`,
+    orderMetaLabel(state.orderMeta),
+    '',
+    ...state.lines.map((l) => `${l.qty}x ${l.name} — ${fmtRp(l.unitPrice * l.qty)}`),
+    '',
+    `Subtotal: ${fmtRp(sub)}`,
+    ...(disc > 0 ? [`Diskon: -${fmtRp(disc)}`] : []),
+    `PPN 11%: ${fmtRp(tax)}`,
+    `*Total: ${fmtRp(total)}*`,
+    `Bayar ${methodLabel}: ${fmtRp(paid)}`,
+    ...(change > 0 ? [`Kembali: ${fmtRp(change)}`] : []),
+    '',
+    STORE.receiptFooter,
+  ].join('\n');
 
   return (
     <div
@@ -25,12 +48,14 @@ export function ScreenReceipt() {
       <div className="pos-main">
         <TopBar
           title="Pembayaran Berhasil"
-          subtitle={`Pesanan #${state.orderNo} · Selesai dalam 2 menit 14 detik`}
+          subtitle={`Pesanan #${state.orderNo} · ${orderMetaLabel(state.orderMeta)}`}
           right={
             <div style={{ display: 'flex', gap: 10 }}>
-              <Btn kind="ghost" icon="receipt" onClick={() => goto('menu')}>
-                Riwayat
-              </Btn>
+              {user.role === 'admin' && (
+                <Btn kind="ghost" icon="stats" onClick={() => goto('report')}>
+                  Laporan
+                </Btn>
+              )}
               <Btn kind="yellow" icon="plus" onClick={startNewOrder}>
                 Pesanan Baru
               </Btn>
@@ -90,8 +115,12 @@ export function ScreenReceipt() {
                   v: fmtRp(total),
                   s: needsProof(state.paymentMethod) ? `${methodLabel} · bukti tersimpan` : methodLabel,
                 },
-                { k: 'Pelanggan', v: 'Pak Yusuf', s: `+${Math.floor(total / 10000)} poin · Member Emas` },
-                { k: 'Estimasi siap', v: '± 18 menit', s: 'Antrian dapur #04' },
+                {
+                  k: 'Pelanggan',
+                  v: state.orderMeta.customerName.trim() || '—',
+                  s: orderMetaLabel({ ...state.orderMeta, customerName: '' }),
+                },
+                { k: 'Kasir', v: user.name, s: printedAt },
               ].map((m, i) => (
                 <div
                   key={i}
@@ -146,13 +175,14 @@ export function ScreenReceipt() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
                 {[
-                  { i: 'print', t: 'Cetak struk' },
-                  { i: 'receipt', t: 'WhatsApp' },
-                  { i: 'note', t: 'Email' },
-                  { i: 'close', t: 'Tidak perlu' },
+                  { i: 'print', t: 'Cetak struk', run: () => window.print() },
+                  { i: 'receipt', t: 'WhatsApp', run: () => window.open(`https://wa.me/?text=${encodeURIComponent(receiptText)}`, '_blank', 'noopener') },
+                  { i: 'note', t: 'Email', run: () => (window.location.href = `mailto:?subject=${encodeURIComponent(`Struk ${STORE.name} #${state.orderNo}`)}&body=${encodeURIComponent(receiptText)}`) },
+                  { i: 'plus', t: 'Pesanan baru', run: startNewOrder },
                 ].map((a, i) => (
                   <button
                     key={i}
+                    onClick={a.run}
                     style={{
                       height: 84,
                       borderRadius: 14,
@@ -174,41 +204,6 @@ export function ScreenReceipt() {
               </div>
             </div>
 
-            <div
-              style={{
-                padding: '16px 18px',
-                borderRadius: 16,
-                background: 'var(--green-tint)',
-                display: 'flex',
-                gap: 14,
-                alignItems: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: 'var(--green)',
-                  color: 'var(--yellow)',
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
-                <Icon name="bag" size={22} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)' }}>
-                  Pesanan diteruskan ke dapur
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 2 }}>
-                  Tiket cetak otomatis ke printer dapur ‘Wajan-1’ · {itemCount} item dimasak paralel
-                </div>
-              </div>
-              <Btn kind="ghost" size="sm">
-                Lihat Antrian
-              </Btn>
-            </div>
           </div>
 
           {/* Right — receipt */}
@@ -222,6 +217,7 @@ export function ScreenReceipt() {
             }}
           >
             <div
+              className="receipt-paper"
               style={{
                 width: '100%',
                 maxWidth: 360,
@@ -262,18 +258,16 @@ export function ScreenReceipt() {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  Martabak Mas Iqbal
+                  {STORE.name}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-                  Cabang Sudirman · 0812-3456-7890
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>NPWP 01.234.567.8-901.000</div>
+                {STORE.address && <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>{STORE.address}</div>}
+                {STORE.phone && <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>Telp. {STORE.phone}</div>}
               </div>
               <div style={{ borderTop: '1px dashed var(--hairline-2)', margin: '10px 0' }} />
               <RcLine k="No. Pesanan" v={`#${state.orderNo}`} />
-              <RcLine k="Tanggal" v="10/05/26 19:44" />
-              <RcLine k="Kasir" v="Iqbal" />
-              <RcLine k="Tipe" v="Dine-in · Meja 07" />
+              <RcLine k="Tanggal" v={printedAt} />
+              <RcLine k="Kasir" v={user.name} />
+              <RcLine k="Pesanan" v={orderMetaLabel(state.orderMeta)} />
               <div style={{ borderTop: '1px dashed var(--hairline-2)', margin: '10px 0' }} />
               {state.lines.map((l) => (
                 <div key={l.id}>
@@ -320,13 +314,13 @@ export function ScreenReceipt() {
                   paddingBottom: 14,
                 }}
               >
-                Terima kasih, sampai jumpa lagi!
-                <br />
-                IG @martabakmasiqbal · #ManisnyaPasNet
-                <br />
-                ━━━━━━━━━━━━━━━━━━━━━━━━
-                <br />
-                Powered by KasirKu POS
+                {STORE.receiptFooter}
+                {STORE.instagram && (
+                  <>
+                    <br />
+                    IG @{STORE.instagram}
+                  </>
+                )}
               </div>
               <div
                 style={{

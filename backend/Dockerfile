@@ -18,6 +18,8 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
+# Foto menu bawaan (dipasang ke database saat start, lihat src/seed)
+COPY assets ./assets
 
 EXPOSE 3000
 

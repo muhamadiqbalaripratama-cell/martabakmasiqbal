@@ -13,6 +13,7 @@ const ITEMS: Item[] = [
   { id: 'tables', label: 'Meja', icon: 'table' },
   { id: 'stats', label: 'Laporan', icon: 'stats', screen: 'report', adminOnly: true },
   { id: 'people', label: 'Pelanggan', icon: 'people' },
+  { id: 'menu-admin', label: 'Kelola Menu', icon: 'note', screen: 'menu-admin', adminOnly: true },
   { id: 'users', label: 'Pengguna', icon: 'user', screen: 'users', adminOnly: true },
 ];
 

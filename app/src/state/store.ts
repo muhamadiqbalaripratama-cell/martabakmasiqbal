@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CartLine, MenuItem, PaymentMethod, PaymentProof, Screen, User } from '../types';
+import type { CartLine, MenuItem, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from '../types';
 
 export type AppState = {
   screen: Screen;
@@ -14,6 +14,10 @@ export type AppState = {
   todayCount: number;
   // True while POST /api/orders is in flight.
   submitting: boolean;
+  // Menu aktif dari server (null = belum dimuat).
+  menu: MenuItem[] | null;
+  menuError: boolean;
+  orderMeta: OrderMeta;
 };
 
 export type AppAPI = {
@@ -30,6 +34,8 @@ export type AppAPI = {
   setPaymentMethod: (m: PaymentMethod) => void;
   setCashReceived: (v: number) => void;
   setPaymentProof: (p: PaymentProof | null) => void;
+  setOrderMeta: (patch: Partial<OrderMeta>) => void;
+  reloadMenu: () => Promise<void>;
   startNewOrder: () => void;
   // Resolves true kalau pesanan tersimpan di server.
   submitOrder: () => Promise<boolean>;
@@ -53,3 +59,13 @@ export const totalsFor = (lines: CartLine[]) => {
   const total = sub - disc + tax;
   return { sub, disc, tax, total, itemCount: lines.reduce((s, l) => s + l.qty, 0) };
 };
+
+// "Dine-in · Meja 7 · Budi" / "Take-away · Budi" / "Dine-in"
+export const orderMetaLabel = (m: OrderMeta) =>
+  [
+    m.type === 'dine-in' ? 'Dine-in' : 'Take-away',
+    m.type === 'dine-in' && m.tableNo.trim() ? `Meja ${m.tableNo.trim()}` : '',
+    m.customerName.trim(),
+  ]
+    .filter(Boolean)
+    .join(' · ');

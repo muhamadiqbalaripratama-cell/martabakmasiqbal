@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 import { fmtRp } from '../data/menu';
 import { BANK_TRANSFER, fmtAccountNo } from '../data/payment';
 import type { PaymentMethod } from '../types';
-import { useApp, totalsFor } from '../state/store';
+import { orderMetaLabel, useApp, totalsFor } from '../state/store';
 
 type MethodProps = {
   id: PaymentMethod;
@@ -193,7 +193,7 @@ export function ScreenPayMethod() {
               <div style={{ zIndex: 1, textAlign: 'right' }}>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>Pesanan</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>#{orderNo}</div>
-                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>Meja 07 · Pak Yusuf</div>
+                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>{orderMetaLabel(state.orderMeta)}</div>
               </div>
             </div>
 

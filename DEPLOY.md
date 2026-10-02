@@ -167,12 +167,19 @@ Cek logs: `docker compose logs api`. Pastikan MySQL healthy: `docker compose ps`
 
 Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker compose exec web ls /usr/share/nginx/html`.
 
+## Data menu & toko
+
+- **Menu** (30 item: martabak manis, martabak telur, minuman, paket hemat) beserta foto ilustrasi otomatis dimasukkan ke database saat backend pertama kali jalan. Sumbernya `backend/src/seed/menu.ts` dan `backend/assets/menu/*.jpg`.
+- Setelah itu menu dikelola admin dari layar **Kelola Menu**: ubah nama/harga/deskripsi, **upload foto asli**, tandai *habis*, atau sembunyikan menu. Perubahan admin tidak tertimpa saat backend restart. Operator juga bisa menandai menu habis/tersedia lewat API.
+- **Info toko di struk & layar QRIS**: edit `app/src/data/store.ts` (alamat, telepon, Instagram, NMID QRIS). Baris yang dikosongkan tidak ditampilkan.
+- **Gambar QRIS asli toko**: simpan sebagai `app/public/qris-toko.png`, lalu build ulang (`docker compose up -d --build`). Selama file ini belum ada, layar QRIS menampilkan peringatan dan QR contoh yang **tidak bisa dipakai bayar**.
+
 ## Login & hak akses
 
 | Role | Bisa |
 | --- | --- |
 | **Operator** | Login, transaksi kasir (Tunai / QRIS / Transfer BCA + upload bukti) |
-| **Admin** | Semua yang operator bisa, plus **Laporan** (termasuk lihat bukti bayar) dan **Pengguna** (tambah akun, reset password, ubah role, nonaktifkan) |
+| **Admin** | Semua yang operator bisa, plus **Laporan** (termasuk lihat bukti bayar), **Kelola Menu** (harga, foto, habis/sembunyikan), dan **Pengguna** (tambah akun, reset password, ubah role, nonaktifkan) |
 
 - Sesi login disimpan di cookie `HttpOnly` selama 12 jam (satu shift), lalu harus login ulang.
 - Setelah 5x salah password, username tersebut dikunci 15 menit dari IP yang sama.
@@ -189,7 +196,12 @@ Semua endpoint selain `/api/health` dan `/api/auth/login` butuh login (cookie se
 | POST | `/api/auth/login` | publik | `{ username, password }` → set cookie sesi |
 | POST | `/api/auth/logout` | publik | Hapus sesi |
 | GET | `/api/auth/me` | login | User yang sedang login |
-| GET | `/api/menu` | login | Daftar menu items |
+| GET | `/api/menu` | login | Daftar menu aktif; `?all=1` (admin) ikut menu yang disembunyikan |
+| GET | `/api/menu/:id/image` | login | Foto menu |
+| POST | `/api/menu` | admin | Tambah menu `{ category, name, price, description?, tag?, hot?, sold_out? }` |
+| PATCH | `/api/menu/:id` | admin* | Ubah menu; `active: false` = sembunyikan. *Operator hanya boleh `sold_out` |
+| PUT | `/api/menu/:id/image` | admin | Upload foto `{ mime, data: <base64> }` (JPG/PNG/WEBP, maks 3 MB) |
+| DELETE | `/api/menu/:id/image` | admin | Hapus foto |
 | POST | `/api/orders` | login | Buat pesanan baru (dicatat atas nama user yang login) |
 | GET | `/api/orders/today/count` | login | Jumlah pesanan hari ini |
 | GET | `/api/orders` | admin | 50 pesanan terbaru; `?date=YYYY-MM-DD` → semua pesanan tanggal itu |

@@ -217,7 +217,7 @@ export function ScreenReport() {
                       <b>#{o.order_no}</b>
                     </Td>
                     <Td>{fmtTime(o.created_at)}</Td>
-                    <Td>{[o.customer_name, o.table_no].filter(Boolean).join(' · ') || '—'}</Td>
+                    <Td>{[o.customer_name, o.table_no ? `Meja ${o.table_no.replace(/^meja\s*/i, '')}` : o.type === 'take-away' ? 'Take-away' : ''].filter(Boolean).join(' · ') || '—'}</Td>
                     <Td>{PAYMENT_LABEL[o.payment_method] ?? o.payment_method}</Td>
                     <Td>{o.operator_name ?? '—'}</Td>
                     <Td align="right">

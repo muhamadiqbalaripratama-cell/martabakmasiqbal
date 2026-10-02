@@ -1,4 +1,4 @@
-import type { CartLine, PaymentMethod, PaymentProof, Role, User } from '../types';
+import type { Accent, CartLine, MenuCategory, MenuItem, OrderType, PaymentMethod, PaymentProof, Role, User } from '../types';
 
 // Always relative — nginx in front proxies /api/* to the backend service.
 const BASE = '/api';
@@ -8,9 +8,9 @@ type CreateOrderInput = {
   paymentMethod: PaymentMethod;
   cashReceived: number;
   paymentProof?: PaymentProof | null;
-  type?: string;
-  tableNo?: string;
-  customerName?: string;
+  type: OrderType;
+  tableNo: string;
+  customerName: string;
 };
 
 export type CreatedOrder = {
@@ -111,9 +111,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
             data: input.paymentProof.dataUrl.slice(input.paymentProof.dataUrl.indexOf(',') + 1),
           }
         : undefined,
-      type: input.type ?? 'dine-in',
-      table_no: input.tableNo ?? 'Meja 07',
-      customer_name: input.customerName ?? 'Pak Yusuf',
+      type: input.type,
+      table_no: input.type === 'dine-in' && input.tableNo.trim() ? input.tableNo.trim() : undefined,
+      customer_name: input.customerName.trim() || undefined,
     }),
   });
 }
@@ -160,4 +160,75 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ─── Menu ──────────────────────────────────────────────────────────
+
+type MenuRow = {
+  id: string;
+  category: MenuCategory;
+  name: string;
+  description: string | null;
+  price: number;
+  monogram: string;
+  accent: Accent;
+  tag: string | null;
+  hot: number;
+  sold_out: number;
+  active: number;
+  image_version: number | null;
+};
+
+const toMenuItem = (r: MenuRow): MenuItem => ({
+  id: r.id,
+  category: r.category,
+  name: r.name,
+  description: r.description ?? undefined,
+  price: r.price,
+  monogram: r.monogram,
+  accent: r.accent,
+  tag: r.tag ?? undefined,
+  hot: Boolean(r.hot),
+  soldOut: Boolean(r.sold_out),
+  active: Boolean(r.active),
+  imageUrl: r.image_version ? `${BASE}/menu/${encodeURIComponent(r.id)}/image?v=${r.image_version}` : undefined,
+});
+
+// all = ikut item nonaktif (khusus admin).
+export async function getMenu(all = false): Promise<MenuItem[]> {
+  return (await jsonFetch<MenuRow[]>(`${BASE}/menu${all ? '?all=1' : ''}`)).map(toMenuItem);
+}
+
+export type MenuInput = Partial<{
+  category: MenuCategory;
+  name: string;
+  description: string;
+  price: number;
+  tag: string;
+  hot: boolean;
+  sold_out: boolean;
+  active: boolean;
+}>;
+
+export async function createMenuItem(input: MenuInput): Promise<MenuItem> {
+  return toMenuItem(await jsonFetch<MenuRow>(`${BASE}/menu`, { method: 'POST', body: JSON.stringify(input) }));
+}
+
+export async function updateMenuItem(id: string, input: MenuInput): Promise<MenuItem> {
+  return toMenuItem(
+    await jsonFetch<MenuRow>(`${BASE}/menu/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  );
+}
+
+export async function setMenuImage(id: string, img: PaymentProof): Promise<MenuItem> {
+  return toMenuItem(
+    await jsonFetch<MenuRow>(`${BASE}/menu/${encodeURIComponent(id)}/image`, {
+      method: 'PUT',
+      body: JSON.stringify({ mime: img.mime, data: img.dataUrl.slice(img.dataUrl.indexOf(',') + 1) }),
+    }),
+  );
+}
+
+export async function deleteMenuImage(id: string): Promise<MenuItem> {
+  return toMenuItem(await jsonFetch<MenuRow>(`${BASE}/menu/${encodeURIComponent(id)}/image`, { method: 'DELETE' }));
 }

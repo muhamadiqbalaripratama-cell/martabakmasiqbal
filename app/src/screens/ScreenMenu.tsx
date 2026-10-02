@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
@@ -7,27 +7,30 @@ import { MenuCard } from '../components/MenuCard';
 import { CartPanel } from '../components/CartPanel';
 import { CustomizeModal } from '../components/CustomizeModal';
 import { Icon } from '../components/Icon';
-import { MENU } from '../data/menu';
-import { fmtRp } from '../data/menu';
-import { useApp, totalsFor } from '../state/store';
+import { CATEGORY_LABEL, CATEGORY_ORDER, fmtRp } from '../data/menu';
+import type { MenuCategory } from '../types';
+import { orderMetaLabel, useApp, totalsFor } from '../state/store';
 
 export function ScreenMenu() {
-  const { state, goto, openCustomize } = useApp();
+  const { state, goto, openCustomize, user, reloadMenu } = useApp();
   const { total, itemCount } = totalsFor(state.lines);
-  const [cat, setCat] = useState<'all' | 'manis' | 'asin' | 'drink' | 'paket'>('manis');
+  const [cat, setCat] = useState<'all' | MenuCategory>('all');
+  const [query, setQuery] = useState('');
+  const now = useClock();
 
-  const cats: { id: typeof cat; label: string; count: number }[] = [
-    { id: 'all', label: 'Semua', count: 28 },
-    { id: 'manis', label: 'Martabak Manis', count: 12 },
-    { id: 'asin', label: 'Martabak Telur', count: 6 },
-    { id: 'drink', label: 'Minuman', count: 8 },
-    { id: 'paket', label: 'Paket Hemat', count: 4 },
+  const menu = state.menu ?? [];
+  const q = query.trim().toLowerCase();
+  const matches = useMemo(
+    () => (q ? menu.filter((m) => `${m.name} ${m.description ?? ''}`.toLowerCase().includes(q)) : menu),
+    [menu, q],
+  );
+  const cats = [
+    { id: 'all' as const, label: 'Semua', count: matches.length },
+    ...CATEGORY_ORDER.map((c) => ({ id: c, label: CATEGORY_LABEL[c], count: matches.filter((m) => m.category === c).length })),
   ];
-
-  const manis = MENU.filter((m) => m.category === 'manis');
-  const asin = MENU.filter((m) => m.category === 'asin');
-  const showManis = cat === 'all' || cat === 'manis';
-  const showAsin = cat === 'all' || cat === 'asin';
+  const sections = CATEGORY_ORDER.filter((c) => cat === 'all' || cat === c)
+    .map((c) => ({ c, items: matches.filter((m) => m.category === c) }))
+    .filter((sec) => sec.items.length > 0);
 
   return (
     <div className="pos">
@@ -35,16 +38,16 @@ export function ScreenMenu() {
       <div className="pos-main">
         <TopBar
           title="Menu Kasir"
-          subtitle="Cabang Sudirman · Kasir: Iqbal · Shift Sore"
-          search="Cari menu, kode item, atau scan barcode…"
+          subtitle={`Kasir: ${user.name}`}
+          search={{ value: query, onChange: setQuery, placeholder: 'Cari menu…' }}
           right={
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <div className="topbar-right-hide-mobile" style={{ textAlign: 'right' }}>
                 <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  Sen, 10 Mei 2026
+                  {now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
                 <div className="mono tnum" style={{ fontSize: 14, fontWeight: 600 }}>
-                  19:42:08
+                  {now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
               </div>
               <div className="topbar-right-hide-mobile" style={{ width: 1, height: 28, background: 'var(--hairline)', marginLeft: 4 }} />
@@ -96,10 +99,10 @@ export function ScreenMenu() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16 }}>
-                  Promo Senin Hijau · Diskon 15% semua Martabak Manis
+                  Promo Senin Hijau · Diskon 10% semua menu
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
-                  Otomatis terapkan untuk transaksi di atas Rp50.000 · berakhir 22:00
+                  Otomatis diterapkan di setiap transaksi
                 </div>
               </div>
               <div
@@ -117,6 +120,25 @@ export function ScreenMenu() {
               </div>
             </div>
 
+            {/* Pencarian untuk tablet/HP (kolom cari di TopBar disembunyikan) */}
+            <input
+              className="search-inline"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari menu…"
+              aria-label="Cari menu"
+              style={{
+                height: 42,
+                padding: '0 14px',
+                borderRadius: 10,
+                border: '1px solid var(--hairline-2)',
+                background: 'var(--surface)',
+                font: 'inherit',
+                fontSize: 14,
+              }}
+            />
+
             {/* Category chips */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {cats.map((c) => (
@@ -126,64 +148,38 @@ export function ScreenMenu() {
               ))}
             </div>
 
-            {showManis && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 18,
-                      fontWeight: 600,
-                      letterSpacing: '-0.02em',
-                    }}
-                  >
-                    Martabak Manis
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                    12 item · Urutkan: <b style={{ color: 'var(--ink-2)' }}>Terlaris</b>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-                  {manis.map((m) => (
-                    <MenuCard key={m.id} {...m} onAdd={() => openCustomize(m)} />
-                  ))}
-                </div>
-              </>
+            {state.menu === null && !state.menuError && <EmptyNote>Memuat menu…</EmptyNote>}
+            {state.menuError && (
+              <EmptyNote>
+                Menu gagal dimuat.{' '}
+                <button onClick={reloadMenu} style={{ border: 0, background: 'none', color: 'var(--green)', fontWeight: 700, cursor: 'pointer', font: 'inherit' }}>
+                  Coba lagi
+                </button>
+              </EmptyNote>
+            )}
+            {state.menu !== null && sections.length === 0 && (
+              <EmptyNote>{q ? `Tidak ada menu yang cocok dengan "${query}".` : 'Belum ada menu di kategori ini.'}</EmptyNote>
             )}
 
-            {showAsin && (
-              <>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    marginTop: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 18,
-                      fontWeight: 600,
-                      letterSpacing: '-0.02em',
-                    }}
-                  >
-                    Martabak Telur
+            {sections.map(({ c, items }) => (
+              <div key={c} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>
+                    {CATEGORY_LABEL[c]}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>6 item</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{items.length} item</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-                  {asin.map((m) => (
+                  {items.map((m) => (
                     <MenuCard key={m.id} {...m} onAdd={() => openCustomize(m)} />
                   ))}
                 </div>
-              </>
-            )}
+              </div>
+            ))}
           </div>
 
           <CartPanel
-            type="Dine-in · Meja 7"
+            type={orderMetaLabel(state.orderMeta)}
             ctaLabel="Lanjut ke Pembayaran"
             onCta={() => goto('cart')}
           />
@@ -223,4 +219,18 @@ export function ScreenMenu() {
       {state.customizing && <CustomizeModal item={state.customizing} />}
     </div>
   );
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>{children}</div>;
+}
+
+// Jam yang berjalan (update tiap detik).
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
 }

@@ -5,7 +5,7 @@ type TopBarProps = {
   title: string;
   subtitle?: string;
   right?: ReactNode;
-  search?: string;
+  search?: { value: string; onChange: (v: string) => void; placeholder: string };
 };
 
 export function TopBar({ title, subtitle, right, search }: TopBarProps) {
@@ -43,20 +43,14 @@ export function TopBar({ title, subtitle, right, search }: TopBarProps) {
           }}
         >
           <Icon name="search" size={16} />
-          <span style={{ fontSize: 13 }}>{search}</span>
-          <div style={{ flex: 1 }} />
-          <span
-            className="mono"
-            style={{
-              fontSize: 11,
-              padding: '2px 6px',
-              borderRadius: 4,
-              background: 'var(--surface)',
-              border: '1px solid var(--hairline)',
-            }}
-          >
-            ⌘K
-          </span>
+          <input
+            type="search"
+            value={search.value}
+            onChange={(e) => search.onChange(e.target.value)}
+            placeholder={search.placeholder}
+            aria-label="Cari menu"
+            style={{ flex: 1, minWidth: 0, border: 0, outline: 'none', background: 'transparent', font: 'inherit', fontSize: 13, color: 'var(--ink)' }}
+          />
         </div>
       )}
       {right && <div className="topbar-right">{right}</div>}

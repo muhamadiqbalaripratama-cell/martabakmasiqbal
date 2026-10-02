@@ -3,23 +3,10 @@ import { TopBar } from '../components/TopBar';
 import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
+import { Thumb } from '../components/Thumb';
 import { Row } from '../components/Row';
 import { fmtRp } from '../data/menu';
-import type { Accent } from '../types';
 import { useApp, totalsFor } from '../state/store';
-
-const BG: Record<Accent, string> = {
-  green: '#dfe9d8',
-  yellow: '#fff1b8',
-  cream: '#f4e6c5',
-  cocoa: '#e9d8c5',
-};
-const INK: Record<Accent, string> = {
-  green: 'var(--green)',
-  yellow: '#7a5a08',
-  cream: '#6b4f10',
-  cocoa: '#5a3a18',
-};
 
 const qtyBtn2 = {
   width: 30,
@@ -33,7 +20,8 @@ const qtyBtn2 = {
 } as const;
 
 export function ScreenCart() {
-  const { state, goto, updateQty, removeLine, clearCart } = useApp();
+  const { state, goto, updateQty, removeLine, clearCart, setOrderMeta } = useApp();
+  const meta = state.orderMeta;
   const { lines, orderNo } = state;
   const { sub, disc, tax, total, itemCount } = totalsFor(lines);
 
@@ -57,45 +45,59 @@ export function ScreenCart() {
         />
         <div className="split split-collapse-md" style={splitCols('1fr 420px')}>
           <div className="pad" style={{ padding: '24px 28px', overflow: 'auto' }}>
-            {/* Order meta */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 18 }}>
-              {[
-                { k: 'Tipe Pesanan', v: 'Dine-in', icon: 'store' },
-                { k: 'Nomor Meja', v: 'Meja 07', icon: 'table' },
-                { k: 'Pelanggan', v: 'Pak Yusuf', icon: 'user' },
-                { k: 'Estimasi', v: '± 18 menit', icon: 'clock' },
-              ].map((m, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: 'var(--surface)',
-                    border: '1px solid var(--hairline)',
-                    borderRadius: 14,
-                    padding: '12px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
-                      background: 'var(--green-tint)',
-                      color: 'var(--green)',
-                      display: 'grid',
-                      placeItems: 'center',
-                    }}
-                  >
-                    <Icon name={m.icon} size={18} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{m.k}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{m.v}</div>
-                  </div>
+            {/* Info pesanan — diisi kasir */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <MetaCard icon="store" label="Tipe Pesanan">
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['dine-in', 'take-away'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setOrderMeta({ type: t })}
+                      style={{
+                        flex: 1,
+                        height: 30,
+                        borderRadius: 8,
+                        border: meta.type === t ? '1.5px solid var(--green)' : '1px solid var(--hairline-2)',
+                        background: meta.type === t ? 'var(--green-tint)' : 'var(--surface)',
+                        color: meta.type === t ? 'var(--green)' : 'var(--ink-2)',
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {t === 'dine-in' ? 'Dine-in' : 'Take-away'}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </MetaCard>
+              {meta.type === 'dine-in' && (
+                <MetaCard icon="table" label="Nomor Meja">
+                  <input
+                    value={meta.tableNo}
+                    onChange={(e) => setOrderMeta({ tableNo: e.target.value.slice(0, 8) })}
+                    placeholder="mis. 7"
+                    inputMode="numeric"
+                    aria-label="Nomor meja"
+                    style={metaInput}
+                  />
+                </MetaCard>
+              )}
+              <MetaCard icon="user" label="Nama Pelanggan (opsional)">
+                <input
+                  value={meta.customerName}
+                  onChange={(e) => setOrderMeta({ customerName: e.target.value.slice(0, 60) })}
+                  placeholder="mis. Budi"
+                  aria-label="Nama pelanggan"
+                  style={metaInput}
+                />
+              </MetaCard>
             </div>
 
             {/* Itemized list */}
@@ -148,23 +150,7 @@ export function ScreenCart() {
                   }}
                 >
                   <div className="c-item" style={{ display: 'flex', gap: 12, minWidth: 0 }}>
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 10,
-                        flexShrink: 0,
-                        background: BG[l.accent],
-                        color: INK[l.accent],
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontFamily: 'var(--font-display)',
-                        fontWeight: 700,
-                        fontSize: 24,
-                      }}
-                    >
-                      {l.monogram}
-                    </div>
+                    <Thumb imageUrl={l.imageUrl} monogram={l.monogram} accent={l.accent} size={48} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{l.mods}</div>
@@ -254,12 +240,9 @@ export function ScreenCart() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>SENINHIJAU diterapkan</div>
                   <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 1 }}>
-                    Diskon 10% otomatis untuk Martabak Manis pada hari Senin · hemat {fmtRp(disc)}
+                    Diskon 10% otomatis untuk semua menu · hemat {fmtRp(disc)}
                   </div>
                 </div>
-                <Btn kind="ghost" size="sm">
-                  Ganti Promo
-                </Btn>
               </div>
             )}
           </div>
@@ -288,7 +271,6 @@ export function ScreenCart() {
               <Row k={`Subtotal (${itemCount} item)`} v={fmtRp(sub)} />
               <Row k="Diskon Senin Hijau (10%)" v={'−' + fmtRp(disc)} valueColor="var(--danger)" />
               <Row k="PPN 11%" v={fmtRp(tax)} />
-              <Row k="Biaya layanan" v={fmtRp(0)} />
             </div>
             <div style={{ height: 14, borderBottom: '1px dashed var(--hairline-2)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 14 }}>
@@ -304,27 +286,6 @@ export function ScreenCart() {
                 }}
               >
                 {fmtRp(total)}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                padding: 14,
-                borderRadius: 12,
-                background: 'var(--green-tint)',
-                display: 'flex',
-                gap: 10,
-              }}
-            >
-              <Icon name="spark" size={16} color="var(--green)" />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
-                  Pelanggan dapat {Math.floor(total / 10000)} poin
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 2 }}>
-                  Pak Yusuf · Member Emas · 1.482 poin terkumpul
-                </div>
               </div>
             </div>
 
@@ -351,6 +312,54 @@ export function ScreenCart() {
             </div>
           </aside>
         </div>
+      </div>
+    </div>
+  );
+}
+
+const metaInput: React.CSSProperties = {
+  width: '100%',
+  height: 30,
+  padding: '0 10px',
+  borderRadius: 8,
+  border: '1px solid var(--hairline-2)',
+  background: 'var(--surface-soft)',
+  font: 'inherit',
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'var(--ink)',
+};
+
+function MetaCard({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--hairline)',
+        borderRadius: 14,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          flexShrink: 0,
+          borderRadius: 10,
+          background: 'var(--green-tint)',
+          color: 'var(--green)',
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        <Icon name={icon} size={18} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{label}</div>
+        {children}
       </div>
     </div>
   );

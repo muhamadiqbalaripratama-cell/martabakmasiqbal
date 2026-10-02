@@ -1,5 +1,6 @@
 import express from 'express';
 import { ensureSchema, pool, waitForDb } from './db';
+import { seedMenu } from './seed/seedMenu';
 import { bootstrapUsers, requireAuth } from './auth';
 import { authRouter } from './routes/auth';
 import { menuRouter } from './routes/menu';
@@ -12,6 +13,7 @@ async function main() {
   await waitForDb();
   await ensureSchema();
   await bootstrapUsers();
+  await seedMenu();
 
   const app = express();
   app.disable('x-powered-by');

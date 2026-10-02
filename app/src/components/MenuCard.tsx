@@ -10,6 +10,7 @@ type MenuCardProps = {
   monogram?: string;
   soldOut?: boolean;
   hot?: boolean;
+  imageUrl?: string;
   onAdd?: () => void;
 };
 
@@ -28,6 +29,7 @@ export function MenuCard({
   monogram = 'M',
   soldOut,
   hot,
+  imageUrl,
   onAdd,
 }: MenuCardProps) {
   const sw = SWATCHES[accent];
@@ -47,7 +49,7 @@ export function MenuCard({
     >
       <div
         style={{
-          height: 110,
+          aspectRatio: '16 / 10',
           borderRadius: 12,
           position: 'relative',
           background: `linear-gradient(135deg, ${sw[0]}, ${sw[1]})`,
@@ -56,6 +58,14 @@ export function MenuCard({
           placeItems: 'center',
         }}
       >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            loading="lazy"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
         <div
           style={{
             fontFamily: 'var(--font-display)',
@@ -68,6 +78,7 @@ export function MenuCard({
         >
           {monogram}
         </div>
+        )}
         {hot && (
           <div
             style={{

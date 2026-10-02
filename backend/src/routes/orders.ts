@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from '../db';
 import { currentUser, requireAuth } from '../auth';
+import { parseImage, type ImageInput, type ParsedImage } from '../images';
 
 export const ordersRouter = Router();
 
@@ -14,26 +15,10 @@ const PAYMENT_METHODS = ['cash', 'qris', 'transfer-bca'];
 const PROOF_REQUIRED = ['qris', 'transfer-bca'];
 
 const PROOF_MAX_BYTES = 5 * 1024 * 1024;
-const PROOF_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
-// Cek isi file benar-benar gambar sesuai mime, bukan sekadar percaya label klien.
-function matchesMagic(buf: Buffer, mime: string): boolean {
-  if (mime === 'image/jpeg') return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-  if (mime === 'image/png') return buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  if (mime === 'image/webp') return buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
-  return false;
-}
-
-type ProofInput = { mime?: string; data?: string };
-
-function parseProof(p: ProofInput | undefined): { mime: string; data: Buffer } | string {
-  if (!p || typeof p.data !== 'string' || typeof p.mime !== 'string') return 'payment_proof_required';
-  if (!PROOF_MIMES.includes(p.mime)) return 'payment_proof_invalid_type';
-  const data = Buffer.from(p.data, 'base64');
-  if (data.length === 0) return 'payment_proof_required';
-  if (data.length > PROOF_MAX_BYTES) return 'payment_proof_too_large';
-  if (!matchesMagic(data, p.mime)) return 'payment_proof_invalid_type';
-  return { mime: p.mime, data };
+function parseProof(p: ImageInput | undefined): ParsedImage | string {
+  const r = parseImage(p, PROOF_MAX_BYTES);
+  return typeof r === 'string' ? `payment_proof_${r}` : r;
 }
 
 const isDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -56,7 +41,7 @@ type CreateOrderBody = {
   payment_method?: string;
   cash_received?: number;
   // Wajib untuk qris & transfer-bca: gambar bukti pembayaran dalam base64.
-  payment_proof?: ProofInput;
+  payment_proof?: ImageInput;
 };
 
 // Operator & admin: mencatat pesanan.
@@ -72,7 +57,7 @@ ordersRouter.post('/', requireAuth(), async (req, res) => {
   if (!PAYMENT_METHODS.includes(body.payment_method)) {
     return res.status(400).json({ error: 'invalid_payment_method', allowed: PAYMENT_METHODS });
   }
-  let proof: { mime: string; data: Buffer } | null = null;
+  let proof: ParsedImage | null = null;
   if (PROOF_REQUIRED.includes(body.payment_method)) {
     const parsed = parseProof(body.payment_proof);
     if (typeof parsed === 'string') return res.status(400).json({ error: parsed });

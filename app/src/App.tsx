@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppCtx, type AppAPI, type AppState } from './state/store';
-import type { CartLine, MenuItem, PaymentMethod, PaymentProof, Screen, User } from './types';
-import { createOrder, getMe, getTodayCount, logout as apiLogout, setUnauthorizedHandler } from './services/api';
+import type { CartLine, MenuItem, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from './types';
+import { createOrder, getMe, getMenu, getTodayCount, logout as apiLogout, setUnauthorizedHandler } from './services/api';
 import { ScreenMenu } from './screens/ScreenMenu';
 import { ScreenCart } from './screens/ScreenCart';
 import { ScreenPayMethod } from './screens/ScreenPayMethod';
@@ -11,50 +11,20 @@ import { ScreenTransfer } from './screens/ScreenTransfer';
 import { ScreenReceipt } from './screens/ScreenReceipt';
 import { ScreenReport } from './screens/ScreenReport';
 import { ScreenUsers } from './screens/ScreenUsers';
+import { ScreenMenuAdmin } from './screens/ScreenMenuAdmin';
 import { ScreenLogin } from './screens/ScreenLogin';
 import { needsProof } from './data/payment';
 
-const SEED_LINES: CartLine[] = [
-  {
-    id: 'seed-1',
-    menuId: 'm1',
-    name: 'Martabak Manis Cokelat Keju',
-    mods: 'Reguler · +Keju Ekstra · +Susu Kental · Standar',
-    qty: 1,
-    unitPrice: 64000,
-    monogram: 'C',
-    accent: 'cocoa',
-  },
-  {
-    id: 'seed-2',
-    menuId: 'a1',
-    name: 'Martabak Telur Sapi',
-    mods: 'Reguler · 4 telur · Pedas sedang',
-    qty: 2,
-    unitPrice: 40000,
-    monogram: 'T',
-    accent: 'yellow',
-  },
-  {
-    id: 'seed-3',
-    menuId: 'm4',
-    name: 'Martabak Manis Greentea Keju',
-    mods: 'Mini · +Keju Ekstra',
-    qty: 1,
-    unitPrice: 63000,
-    monogram: 'G',
-    accent: 'green',
-  },
-];
-
 // Layar khusus admin; operator yang mencoba membuka diarahkan ke Menu.
-const ADMIN_SCREENS: Screen[] = ['report', 'users'];
+const ADMIN_SCREENS: Screen[] = ['report', 'users', 'menu-admin'];
 
 const padOrderNo = (n: number) => String(Math.max(0, n)).padStart(4, '0');
 
-const initialState = (todayCount = 0, lines = SEED_LINES): AppState => ({
+const EMPTY_META: OrderMeta = { type: 'dine-in', tableNo: '', customerName: '' };
+
+const initialState = (todayCount = 0, menu: MenuItem[] | null = null): AppState => ({
   screen: 'menu',
-  lines,
+  lines: [],
   customizing: null,
   paymentMethod: 'qris',
   cashReceived: 0,
@@ -62,6 +32,9 @@ const initialState = (todayCount = 0, lines = SEED_LINES): AppState => ({
   orderNo: padOrderNo(todayCount + 1),
   todayCount,
   submitting: false,
+  menu,
+  menuError: false,
+  orderMeta: EMPTY_META,
 });
 
 type Auth = { status: 'loading' } | { status: 'out' } | { status: 'in'; user: User };
@@ -157,6 +130,24 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
     [],
   );
 
+  const setOrderMeta = useCallback(
+    (patch: Partial<OrderMeta>) => setState((p) => ({ ...p, orderMeta: { ...p.orderMeta, ...patch } })),
+    [],
+  );
+
+  const reloadMenu = useCallback(async () => {
+    try {
+      const menu = await getMenu();
+      setState((p) => ({ ...p, menu, menuError: false }));
+    } catch {
+      setState((p) => ({ ...p, menuError: true }));
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadMenu();
+  }, [reloadMenu]);
+
   const setPaymentProof = useCallback(
     (pp: PaymentProof | null) => setState((p) => ({ ...p, paymentProof: pp })),
     [],
@@ -173,6 +164,7 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
         paymentMethod: state.paymentMethod,
         cashReceived: state.cashReceived,
         paymentProof: needsProof(state.paymentMethod) ? state.paymentProof : null,
+        ...state.orderMeta,
       });
       setState((p) => ({
         ...p,
@@ -186,11 +178,11 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
       setState((p) => ({ ...p, submitting: false }));
       return false;
     }
-  }, [state.lines, state.paymentMethod, state.cashReceived, state.paymentProof]);
+  }, [state.lines, state.paymentMethod, state.cashReceived, state.paymentProof, state.orderMeta]);
 
   const startNewOrder = useCallback(() => {
     // Re-fetch today's count to keep the order number preview accurate.
-    setState((p) => initialState(p.todayCount, []));
+    setState((p) => initialState(p.todayCount, p.menu));
     getTodayCount()
       .then((count) => setState((p) => ({ ...p, todayCount: count, orderNo: padOrderNo(count + 1) })))
       .catch(() => {});
@@ -211,6 +203,8 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
       setPaymentMethod,
       setCashReceived,
       setPaymentProof,
+      setOrderMeta,
+      reloadMenu,
       startNewOrder,
       submitOrder,
     }),
@@ -228,6 +222,8 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
       setPaymentMethod,
       setCashReceived,
       setPaymentProof,
+      setOrderMeta,
+      reloadMenu,
       startNewOrder,
       submitOrder,
     ],
@@ -260,6 +256,8 @@ function ScreenSwitcher({ screen }: { screen: Screen }) {
       return <ScreenReport />;
     case 'users':
       return <ScreenUsers />;
+    case 'menu-admin':
+      return <ScreenMenuAdmin />;
   }
 }
 
