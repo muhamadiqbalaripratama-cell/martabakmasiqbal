@@ -26,7 +26,8 @@ EXPOSE 80
 # Drop privileges — nginx:alpine already runs worker processes as `nginx`
 # user, master starts as root just to bind :80 (which is fine in a container).
 
+# 127.0.0.1, bukan localhost: di alpine localhost bisa ke ::1 (IPv6), nginx hanya listen IPv4.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
