@@ -54,41 +54,6 @@ export function ScreenCart() {
                 marginBottom: 18,
               }}
             >
-              <MetaCard icon="store" label="Tipe Pesanan">
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {(['dine-in', 'take-away'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setOrderMeta({ type: t })}
-                      style={{
-                        flex: 1,
-                        height: 30,
-                        borderRadius: 8,
-                        border: meta.type === t ? '1.5px solid var(--green)' : '1px solid var(--hairline-2)',
-                        background: meta.type === t ? 'var(--green-tint)' : 'var(--surface)',
-                        color: meta.type === t ? 'var(--green)' : 'var(--ink-2)',
-                        fontWeight: 700,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {t === 'dine-in' ? 'Dine-in' : 'Take-away'}
-                    </button>
-                  ))}
-                </div>
-              </MetaCard>
-              {meta.type === 'dine-in' && (
-                <MetaCard icon="table" label="Nomor Meja">
-                  <input
-                    value={meta.tableNo}
-                    onChange={(e) => setOrderMeta({ tableNo: e.target.value.slice(0, 8) })}
-                    placeholder="mis. 7"
-                    inputMode="numeric"
-                    aria-label="Nomor meja"
-                    style={metaInput}
-                  />
-                </MetaCard>
-              )}
               <MetaCard icon="user" label="Nama Pelanggan (opsional)">
                 <input
                   value={meta.customerName}

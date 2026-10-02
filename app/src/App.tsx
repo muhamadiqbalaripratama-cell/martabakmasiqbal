@@ -20,7 +20,7 @@ const ADMIN_SCREENS: Screen[] = ['report', 'users', 'menu-admin'];
 
 const padOrderNo = (n: number) => String(Math.max(0, n)).padStart(4, '0');
 
-const EMPTY_META: OrderMeta = { type: 'dine-in', tableNo: '', customerName: '' };
+const EMPTY_META: OrderMeta = { customerName: '' };
 
 const initialState = (todayCount = 0, menu: MenuItem[] | null = null): AppState => ({
   screen: 'menu',

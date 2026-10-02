@@ -32,12 +32,8 @@ export type MenuItem = {
   imageUrl?: string;
 };
 
-export type OrderType = 'dine-in' | 'take-away';
-
 // Info pesanan yang diisi kasir di layar Review Pesanan.
 export type OrderMeta = {
-  type: OrderType;
-  tableNo: string;
   customerName: string;
 };
 

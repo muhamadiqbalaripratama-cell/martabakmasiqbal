@@ -14,7 +14,7 @@ type CartPanelProps = {
 };
 
 export function CartPanel({
-  type = 'Dine-in',
+  type,
   emptyHint,
   ctaLabel = 'Lanjut ke Pembayaran',
   onCta,
@@ -42,7 +42,7 @@ export function CartPanel({
               Pesanan #{orderNo}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-              {type} · {itemCount} item
+              {[type, `${itemCount} item`].filter(Boolean).join(' · ')}
             </div>
           </div>
         </div>

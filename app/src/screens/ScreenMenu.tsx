@@ -9,7 +9,7 @@ import { CustomizeModal } from '../components/CustomizeModal';
 import { Icon } from '../components/Icon';
 import { CATEGORY_LABEL, CATEGORY_ORDER, fmtRp } from '../data/menu';
 import type { MenuCategory } from '../types';
-import { orderMetaLabel, useApp, totalsFor } from '../state/store';
+import { customerLabel, useApp, totalsFor } from '../state/store';
 
 export function ScreenMenu() {
   const { state, goto, openCustomize, user, reloadMenu } = useApp();
@@ -179,7 +179,7 @@ export function ScreenMenu() {
           </div>
 
           <CartPanel
-            type={orderMetaLabel(state.orderMeta)}
+            type={customerLabel(state.orderMeta)}
             ctaLabel="Lanjut ke Pembayaran"
             onCta={() => goto('cart')}
           />

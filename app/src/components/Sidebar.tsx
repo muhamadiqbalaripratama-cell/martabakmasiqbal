@@ -10,7 +10,6 @@ type Item = { id: string; label: string; icon: string; screen?: Screen; adminOnl
 const ITEMS: Item[] = [
   { id: 'menu', label: 'Menu', icon: 'menu', screen: 'menu' },
   { id: 'orders', label: 'Pesanan', icon: 'receipt' },
-  { id: 'tables', label: 'Meja', icon: 'table' },
   { id: 'stats', label: 'Laporan', icon: 'stats', screen: 'report', adminOnly: true },
   { id: 'people', label: 'Pelanggan', icon: 'people' },
   { id: 'menu-admin', label: 'Kelola Menu', icon: 'note', screen: 'menu-admin', adminOnly: true },

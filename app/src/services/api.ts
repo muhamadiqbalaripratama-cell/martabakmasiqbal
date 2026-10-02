@@ -1,4 +1,4 @@
-import type { Accent, CartLine, MenuCategory, MenuItem, OrderType, PaymentMethod, PaymentProof, Role, User } from '../types';
+import type { Accent, CartLine, MenuCategory, MenuItem, PaymentMethod, PaymentProof, Role, User } from '../types';
 
 // Always relative — nginx in front proxies /api/* to the backend service.
 const BASE = '/api';
@@ -8,8 +8,6 @@ type CreateOrderInput = {
   paymentMethod: PaymentMethod;
   cashReceived: number;
   paymentProof?: PaymentProof | null;
-  type: OrderType;
-  tableNo: string;
   customerName: string;
 };
 
@@ -111,8 +109,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
             data: input.paymentProof.dataUrl.slice(input.paymentProof.dataUrl.indexOf(',') + 1),
           }
         : undefined,
-      type: input.type,
-      table_no: input.type === 'dine-in' && input.tableNo.trim() ? input.tableNo.trim() : undefined,
       customer_name: input.customerName.trim() || undefined,
     }),
   });

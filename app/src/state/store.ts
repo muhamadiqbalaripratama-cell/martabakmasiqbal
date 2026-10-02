@@ -70,12 +70,5 @@ export const totalsFor = (lines: CartLine[]) => {
 
 export const fmtRounding = (n: number) => (n < 0 ? '−' : '+') + 'Rp' + Math.abs(n).toLocaleString('id-ID');
 
-// "Dine-in · Meja 7 · Budi" / "Take-away · Budi" / "Dine-in"
-export const orderMetaLabel = (m: OrderMeta) =>
-  [
-    m.type === 'dine-in' ? 'Dine-in' : 'Take-away',
-    m.type === 'dine-in' && m.tableNo.trim() ? `Meja ${m.tableNo.trim()}` : '',
-    m.customerName.trim(),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+// Nama pelanggan (kosong kalau tidak diisi kasir).
+export const customerLabel = (m: OrderMeta) => m.customerName.trim();

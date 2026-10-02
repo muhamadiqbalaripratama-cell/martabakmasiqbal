@@ -8,7 +8,7 @@ import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
 import { needsProof, PAYMENT_LABEL } from '../data/payment';
 import { STORE } from '../data/store';
-import { fmtRounding, orderMetaLabel, useApp, totalsFor } from '../state/store';
+import { customerLabel, fmtRounding, useApp, totalsFor } from '../state/store';
 
 export function ScreenReceipt() {
   const { state, startNewOrder, goto, user } = useApp();
@@ -17,6 +17,7 @@ export function ScreenReceipt() {
   const paid = isCash ? state.cashReceived : total;
   const change = Math.max(0, paid - total);
   const methodLabel = PAYMENT_LABEL[state.paymentMethod];
+  const customer = customerLabel(state.orderMeta);
   // Waktu struk dibuat (tetap selama layar ini terbuka).
   const [printedAt] = useState(() =>
     new Date().toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }),
@@ -25,7 +26,7 @@ export function ScreenReceipt() {
   const receiptText = [
     `*${STORE.name}*`,
     `Pesanan #${state.orderNo} · ${printedAt}`,
-    orderMetaLabel(state.orderMeta),
+    ...(customer ? [`Pelanggan: ${customer}`] : []),
     '',
     ...state.lines.map((l) => `${l.qty}x ${l.name} — ${fmtRp(l.unitPrice * l.qty)}`),
     '',
@@ -49,7 +50,7 @@ export function ScreenReceipt() {
       <div className="pos-main">
         <TopBar
           title="Pembayaran Berhasil"
-          subtitle={`Pesanan #${state.orderNo} · ${orderMetaLabel(state.orderMeta)}`}
+          subtitle={`Pesanan #${state.orderNo}${customer ? ` · ${customer}` : ''}`}
           right={
             <div style={{ display: 'flex', gap: 10 }}>
               {user.role === 'admin' && (
@@ -118,8 +119,8 @@ export function ScreenReceipt() {
                 },
                 {
                   k: 'Pelanggan',
-                  v: state.orderMeta.customerName.trim() || '—',
-                  s: orderMetaLabel({ ...state.orderMeta, customerName: '' }),
+                  v: customer || '—',
+                  s: customer ? '' : 'Tidak diisi',
                 },
                 { k: 'Kasir', v: user.name, s: printedAt },
               ].map((m, i) => (
@@ -268,7 +269,7 @@ export function ScreenReceipt() {
               <RcLine k="No. Pesanan" v={`#${state.orderNo}`} />
               <RcLine k="Tanggal" v={printedAt} />
               <RcLine k="Kasir" v={user.name} />
-              <RcLine k="Pesanan" v={orderMetaLabel(state.orderMeta)} />
+              {customer && <RcLine k="Pelanggan" v={customer} />}
               <div style={{ borderTop: '1px dashed var(--hairline-2)', margin: '10px 0' }} />
               {state.lines.map((l) => (
                 <div key={l.id}>
