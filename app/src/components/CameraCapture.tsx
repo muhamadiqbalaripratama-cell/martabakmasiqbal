@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Btn } from './Btn';
 import { Icon } from './Icon';
 
 // Kamera langsung di dalam aplikasi (getUserMedia). Browser hanya
@@ -78,58 +77,65 @@ export function CameraCapture({ onCapture, onClose }: Props) {
     );
   };
 
+  // Tata letak: judul / video (mengisi sisa tinggi) / tombol. Video tidak
+  // pernah menentukan tinggi jendela — kamera HP mengirim video tegak
+  // (mis. 1080×1920) yang dulu mendorong tombol jepret keluar layar.
   return (
-    <div className="modal-backdrop" style={{ background: 'rgba(0,0,0,.85)', zIndex: 60 }} onClick={onClose}>
-      <div
-        className="modal-sheet"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 640,
-          maxWidth: '100%',
-          background: '#111',
-          borderRadius: 20,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', color: '#fff' }}>
+    <div className="camera-overlay" onClick={onClose}>
+      <div className="camera-box" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', color: '#fff', flexShrink: 0 }}>
           <div style={{ flex: 1, fontWeight: 700 }}>Foto Bukti Pembayaran</div>
           <button
             onClick={onClose}
             aria-label="Tutup kamera"
-            style={{ border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            style={{ border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 4 }}
           >
-            <Icon name="close" size={22} />
+            <Icon name="close" size={24} />
           </button>
         </div>
-        <div style={{ position: 'relative', background: '#000', aspectRatio: '4 / 3', display: 'grid', placeItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, background: '#000' }}>
           <video
             ref={videoRef}
             playsInline
             muted
-            style={{ width: '100%', height: '100%', objectFit: 'contain', transform: facing === 'user' ? 'scaleX(-1)' : undefined }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              transform: facing === 'user' ? 'scaleX(-1)' : undefined,
+            }}
           />
-          {!ready && !error && <div style={{ position: 'absolute', color: '#ccc', fontSize: 13 }}>Membuka kamera…</div>}
+          {!ready && !error && (
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#ccc', fontSize: 13 }}>Membuka kamera…</div>
+          )}
           {error && (
             <div role="alert" style={{ position: 'absolute', inset: 16, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#ffd5cc', fontSize: 14, fontWeight: 600 }}>
               {error}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 16 }}>
-          {cameraCount > 1 && (
-            <Btn kind="ghost" icon="refresh" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} style={{ color: '#fff', borderColor: '#555' }}>
-              Ganti kamera
-            </Btn>
-          )}
+        <div className="camera-controls">
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+            {cameraCount > 1 && (
+              <button
+                onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
+                aria-label="Ganti kamera depan/belakang"
+                style={{ width: 48, height: 48, borderRadius: '50%', border: '1px solid #555', background: 'rgba(255,255,255,.08)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
+              >
+                <Icon name="refresh" size={22} />
+              </button>
+            )}
+          </div>
           <button
             onClick={capture}
             disabled={!ready}
             aria-label="Ambil foto"
             style={{
-              width: 68,
-              height: 68,
+              width: 72,
+              height: 72,
+              flexShrink: 0,
               borderRadius: '50%',
               border: '4px solid #fff',
               background: ready ? 'var(--yellow)' : '#555',
@@ -137,10 +143,19 @@ export function CameraCapture({ onCapture, onClose }: Props) {
               display: 'grid',
               placeItems: 'center',
               color: 'var(--green)',
+              boxShadow: '0 0 0 4px rgba(0,0,0,.35)',
             }}
           >
-            <Icon name="camera" size={28} />
+            <Icon name="camera" size={30} />
           </button>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={onClose}
+              style={{ height: 40, padding: '0 14px', borderRadius: 10, border: '1px solid #555', background: 'transparent', color: '#fff', fontWeight: 600, cursor: 'pointer', font: 'inherit' }}
+            >
+              Batal
+            </button>
+          </div>
         </div>
       </div>
     </div>

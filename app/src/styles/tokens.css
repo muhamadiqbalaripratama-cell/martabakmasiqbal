@@ -218,6 +218,34 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
+/* Kamera bukti bayar: jendela di tengah (desktop/tablet), layar penuh di HP. */
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.85);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.camera-box {
+  width: min(640px, 100%);
+  height: min(640px, 100%);
+  background: #111;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.camera-controls {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
 /* Kolom cari di dalam konten — hanya saat kolom cari TopBar disembunyikan. */
 .search-inline {
   display: none;
@@ -314,6 +342,18 @@ button:focus-visible {
   .customize-hero-art,
   .customize-hero-desc {
     display: none !important;
+  }
+}
+
+/* HP (tegak maupun miring): kamera layar penuh. */
+@media (max-width: 767px), (max-height: 520px) {
+  .camera-overlay {
+    padding: 0;
+  }
+  .camera-box {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
   }
 }
 
