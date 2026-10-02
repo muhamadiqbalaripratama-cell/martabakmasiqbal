@@ -85,6 +85,39 @@ export async function ensureSchema(): Promise<void> {
     `);
   }
 
+  // Add-on (ukuran, topping, dll) per kategori menu — dikelola admin.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS option_groups (
+      id          VARCHAR(32)  NOT NULL PRIMARY KEY,
+      category    ENUM('manis', 'asin', 'drink', 'paket') NOT NULL,
+      label       VARCHAR(64)  NOT NULL,
+      kind        ENUM('single', 'multi') NOT NULL,
+      max_select  INT          NULL,
+      sort_order  INT          NOT NULL DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS menu_options (
+      id                VARCHAR(32)  NOT NULL PRIMARY KEY,
+      group_id          VARCHAR(32)  NOT NULL,
+      label             VARCHAR(64)  NOT NULL,
+      sub               VARCHAR(128) NULL,
+      price             INT          NOT NULL DEFAULT 0,
+      is_default        TINYINT(1)   NOT NULL DEFAULT 0,
+      sold_out          TINYINT(1)   NOT NULL DEFAULT 0,
+      monogram          VARCHAR(4)   NOT NULL DEFAULT '?',
+      accent            ENUM('green', 'yellow', 'cream', 'cocoa') NOT NULL DEFAULT 'cream',
+      image_mime        VARCHAR(32)  NULL,
+      image_data        MEDIUMBLOB   NULL,
+      image_updated_at  TIMESTAMP    NULL DEFAULT NULL,
+      sort_order        INT          NOT NULL DEFAULT 0,
+      deleted_at        TIMESTAMP    NULL DEFAULT NULL,
+      created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (group_id) REFERENCES option_groups(id),
+      INDEX idx_group (group_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   // Selisih pembulatan total pesanan (lihat routes/orders.ts).
   if (!(await hasColumn('orders', 'rounding'))) {
     await pool.query('ALTER TABLE orders ADD COLUMN rounding INT NOT NULL DEFAULT 0 AFTER tax');

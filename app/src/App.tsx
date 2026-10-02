@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppCtx, type AppAPI, type AppState } from './state/store';
-import type { CartLine, MenuItem, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from './types';
-import { createOrder, getMe, getMenu, getTodayCount, logout as apiLogout, setUnauthorizedHandler } from './services/api';
+import type { CartLine, MenuItem, OptionGroup, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from './types';
+import { createOrder, getMe, getMenu, getOptionGroups, getTodayCount, logout as apiLogout, setUnauthorizedHandler } from './services/api';
 import { ScreenMenu } from './screens/ScreenMenu';
 import { ScreenCart } from './screens/ScreenCart';
 import { ScreenPayMethod } from './screens/ScreenPayMethod';
@@ -22,7 +22,11 @@ const padOrderNo = (n: number) => String(Math.max(0, n)).padStart(4, '0');
 
 const EMPTY_META: OrderMeta = { customerName: '' };
 
-const initialState = (todayCount = 0, menu: MenuItem[] | null = null): AppState => ({
+const initialState = (
+  todayCount = 0,
+  menu: MenuItem[] | null = null,
+  optionGroups: OptionGroup[] | null = null,
+): AppState => ({
   screen: 'menu',
   lines: [],
   customizing: null,
@@ -33,6 +37,7 @@ const initialState = (todayCount = 0, menu: MenuItem[] | null = null): AppState 
   todayCount,
   submitting: false,
   menu,
+  optionGroups,
   menuError: false,
   orderMeta: EMPTY_META,
 });
@@ -137,8 +142,8 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
 
   const reloadMenu = useCallback(async () => {
     try {
-      const menu = await getMenu();
-      setState((p) => ({ ...p, menu, menuError: false }));
+      const [menu, optionGroups] = await Promise.all([getMenu(), getOptionGroups()]);
+      setState((p) => ({ ...p, menu, optionGroups, menuError: false }));
     } catch {
       setState((p) => ({ ...p, menuError: true }));
     }
@@ -182,7 +187,7 @@ function PosApp({ user, onLogout }: { user: User; onLogout: () => Promise<void> 
 
   const startNewOrder = useCallback(() => {
     // Re-fetch today's count to keep the order number preview accurate.
-    setState((p) => initialState(p.todayCount, p.menu));
+    setState((p) => initialState(p.todayCount, p.menu, p.optionGroups));
     getTodayCount()
       .then((count) => setState((p) => ({ ...p, todayCount: count, orderNo: padOrderNo(count + 1) })))
       .catch(() => {});

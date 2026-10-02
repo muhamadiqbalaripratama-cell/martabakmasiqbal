@@ -65,3 +65,27 @@ export type User = {
   name: string;
   role: Role;
 };
+
+// Add-on menu (dikelola admin di Kelola Menu → Add-on).
+export type MenuOption = {
+  id: string;
+  groupId: string;
+  label: string;
+  sub?: string;
+  price: number;
+  isDefault: boolean;
+  soldOut: boolean;
+  monogram: string;
+  accent: Accent;
+  imageUrl?: string;
+};
+
+export type OptionGroup = {
+  id: string;
+  category: MenuCategory;
+  label: string;
+  // 'single' = pilih satu (wajib), 'multi' = boleh beberapa (opsional)
+  kind: 'single' | 'multi';
+  max?: number;
+  options: MenuOption[];
+};

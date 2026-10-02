@@ -1,4 +1,4 @@
-import type { Accent, CartLine, MenuCategory, MenuItem, PaymentMethod, PaymentProof, Role, User } from '../types';
+import type { Accent, CartLine, MenuCategory, MenuItem, MenuOption, OptionGroup, PaymentMethod, PaymentProof, Role, User } from '../types';
 
 // Always relative — nginx in front proxies /api/* to the backend service.
 const BASE = '/api';
@@ -232,4 +232,66 @@ export async function deleteMenuImage(id: string): Promise<MenuItem> {
 // Hapus menu permanen dari daftar (riwayat pesanan tetap utuh).
 export async function deleteMenuItem(id: string): Promise<void> {
   await jsonFetch(`${BASE}/menu/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// ─── Add-on ────────────────────────────────────────────────────────
+
+type OptionRow = {
+  id: string;
+  group_id: string;
+  label: string;
+  sub: string | null;
+  price: number;
+  is_default: number;
+  sold_out: number;
+  monogram: string;
+  accent: Accent;
+  image_version: number | null;
+};
+
+type GroupRow = { id: string; category: MenuCategory; label: string; kind: 'single' | 'multi'; max: number | null; options: OptionRow[] };
+
+const toOption = (r: OptionRow): MenuOption => ({
+  id: r.id,
+  groupId: r.group_id,
+  label: r.label,
+  sub: r.sub ?? undefined,
+  price: r.price,
+  isDefault: Boolean(r.is_default),
+  soldOut: Boolean(r.sold_out),
+  monogram: r.monogram,
+  accent: r.accent,
+  imageUrl: r.image_version ? `${BASE}/options/${encodeURIComponent(r.id)}/image?v=${r.image_version}` : undefined,
+});
+
+export async function getOptionGroups(): Promise<OptionGroup[]> {
+  const { groups } = await jsonFetch<{ groups: GroupRow[] }>(`${BASE}/options`);
+  return groups.map((g) => ({ ...g, max: g.max ?? undefined, options: g.options.map(toOption) }));
+}
+
+export type OptionInput = Partial<{ group_id: string; label: string; sub: string; price: number; is_default: boolean; sold_out: boolean }>;
+
+export async function createOption(input: OptionInput): Promise<MenuOption> {
+  return toOption(await jsonFetch<OptionRow>(`${BASE}/options`, { method: 'POST', body: JSON.stringify(input) }));
+}
+
+export async function updateOption(id: string, input: OptionInput): Promise<MenuOption> {
+  return toOption(await jsonFetch<OptionRow>(`${BASE}/options/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }));
+}
+
+export async function setOptionImage(id: string, img: PaymentProof): Promise<MenuOption> {
+  return toOption(
+    await jsonFetch<OptionRow>(`${BASE}/options/${encodeURIComponent(id)}/image`, {
+      method: 'PUT',
+      body: JSON.stringify({ mime: img.mime, data: img.dataUrl.slice(img.dataUrl.indexOf(',') + 1) }),
+    }),
+  );
+}
+
+export async function deleteOptionImage(id: string): Promise<MenuOption> {
+  return toOption(await jsonFetch<OptionRow>(`${BASE}/options/${encodeURIComponent(id)}/image`, { method: 'DELETE' }));
+}
+
+export async function deleteOption(id: string): Promise<void> {
+  await jsonFetch(`${BASE}/options/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

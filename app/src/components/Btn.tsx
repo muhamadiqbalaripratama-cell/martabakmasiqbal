@@ -33,6 +33,11 @@ export function Btn({ kind = 'primary', size = 'md', icon, children, style, ...r
         borderRadius: 10,
         display: 'inline-flex',
         alignItems: 'center',
+        // Isi tombol selalu di tengah (juga saat tombol dibuat lebar penuh).
+        justifyContent: 'center',
+        textAlign: 'center',
+        // Label tombol satu baris; kalau sempit tombolnya yang turun baris.
+        whiteSpace: 'nowrap',
         gap: 8,
         fontWeight: 600,
         fontSize: FONTS[size],

@@ -41,7 +41,7 @@ export function ScreenMenu() {
           subtitle={`Kasir: ${user.name}`}
           search={{ value: query, onChange: setQuery, placeholder: 'Cari menu…' }}
           right={
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <div className="topbar-right-hide-mobile" style={{ textAlign: 'right' }}>
                 <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                   {now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}

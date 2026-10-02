@@ -39,7 +39,7 @@ export function ScreenQRIS() {
           title="Scan QRIS"
           subtitle={`Pesanan #${state.orderNo} · ${proof ? 'Bukti pembayaran siap' : 'Menunggu bukti pembayaran'}`}
           right={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div
                 style={{
                   display: 'inline-flex',

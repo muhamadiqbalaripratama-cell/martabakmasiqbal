@@ -1,7 +1,7 @@
 // Ilustrasi add-on (topping & tambahan isian) — gaya sama dengan menu-art.cjs.
-// Hasil: app/public/addons/<id>.jpg (id sama dengan app/src/data/menu.ts).
+// Hasil: backend/assets/addons/<id>.jpg (id sama dengan app/src/data/menu.ts).
 //
-//   node tools/addon-art.cjs app/public/addons
+//   node tools/addon-art.cjs backend/assets/addons
 const { T, rng } = require('./menu-art.cjs');
 
 const W = 480, H = 270;

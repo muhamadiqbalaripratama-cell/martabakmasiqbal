@@ -1,9 +1,11 @@
 import express from 'express';
 import { ensureSchema, pool, runDataMigrations, waitForDb } from './db';
 import { seedMenu } from './seed/seedMenu';
+import { seedOptions } from './seed/seedOptions';
 import { bootstrapUsers, requireAuth } from './auth';
 import { authRouter } from './routes/auth';
 import { menuRouter } from './routes/menu';
+import { optionsRouter } from './routes/options';
 import { ordersRouter } from './routes/orders';
 import { usersRouter } from './routes/users';
 
@@ -14,6 +16,7 @@ async function main() {
   await ensureSchema();
   await bootstrapUsers();
   await seedMenu();
+  await seedOptions();
   await runDataMigrations();
 
   const app = express();
@@ -32,6 +35,7 @@ async function main() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/menu', requireAuth(), menuRouter);
+  app.use('/api/options', requireAuth(), optionsRouter);
   app.use('/api/orders', ordersRouter); // izin diatur per route
   app.use('/api/users', usersRouter); // khusus admin
 

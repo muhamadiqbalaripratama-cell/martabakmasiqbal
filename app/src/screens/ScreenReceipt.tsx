@@ -52,7 +52,7 @@ export function ScreenReceipt() {
           title="Pembayaran Berhasil"
           subtitle={`Pesanan #${state.orderNo}${customer ? ` · ${customer}` : ''}`}
           right={
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {user.role === 'admin' && (
                 <Btn kind="ghost" icon="stats" onClick={() => goto('report')}>
                   Laporan

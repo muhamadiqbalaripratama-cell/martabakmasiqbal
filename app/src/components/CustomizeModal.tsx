@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 import { Btn } from './Btn';
-import { CATEGORY_LABEL, fmtRp, OPTION_GROUPS } from '../data/menu';
-import type { MenuItem, CartLine } from '../types';
+import { CATEGORY_LABEL, fmtRp } from '../data/menu';
+import type { MenuItem, CartLine, OptionGroup } from '../types';
 import { useApp } from '../state/store';
 
 type SectProps = {
@@ -165,7 +165,7 @@ function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', image
       <div>
         <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
         <div className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
-          +{fmtRp(price)}
+          {soldOut ? 'Habis' : `+${fmtRp(price)}`}
         </div>
       </div>
       {selected && (
@@ -192,10 +192,14 @@ function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', image
 
 export function CustomizeModal({ item }: { item: MenuItem }) {
   const { state, closeCustomize, addLine } = useApp();
-  const groups = OPTION_GROUPS[item.category] ?? [];
-  // Pilihan per grup opsi: { size: ['reguler'], topping: ['t1'], ... }
+  // Add-on untuk kategori ini (dari Kelola Menu → Add-on); grup kosong disembunyikan.
+  const groups = useMemo(
+    () => (state.optionGroups ?? []).filter((g) => g.category === item.category && g.options.length > 0),
+    [state.optionGroups, item.category],
+  );
+  // Pilihan per grup: { 'manis-size': ['manis-reguler'], 'manis-topping': ['t1'], ... }
   const [picks, setPicks] = useState<Record<string, string[]>>(() =>
-    Object.fromEntries(groups.map((g) => [g.id, [...g.defaults]])),
+    Object.fromEntries(groups.map((g) => [g.id, defaultPicks(g)])),
   );
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState('');
@@ -386,10 +390,11 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                       <OptCard
                         key={o.id}
                         label={o.label}
-                        sub={o.sub}
+                        sub={o.soldOut ? 'Habis' : o.sub}
                         // Grup tanpa biaya tambahan (mis. level pedas) tidak perlu label harga.
                         price={g.options.some((x) => x.price > 0) ? o.price : undefined}
                         selected={picks[g.id]?.includes(o.id)}
+                        disabled={o.soldOut}
                         onClick={() => pick(g.id, o.id, 'single')}
                       />
                     ))}
@@ -403,9 +408,9 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                         key={o.id}
                         label={o.label}
                         price={o.price}
-                        monogram={o.monogram ?? o.label[0]}
+                        monogram={o.monogram}
                         accent={o.accent}
-                        image={o.image}
+                        image={o.imageUrl}
                         soldOut={o.soldOut}
                         selected={picks[g.id]?.includes(o.id)}
                         onClick={() => pick(g.id, o.id, 'multi', g.max)}
@@ -516,4 +521,14 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
       </div>
     </div>
   );
+}
+
+// Pilihan awal: grup "pilih satu" → yang ditandai default (kalau tidak habis),
+// kalau tidak ada pakai pilihan pertama yang tersedia. Grup "multi" → yang
+// ditandai default saja.
+function defaultPicks(g: OptionGroup): string[] {
+  const available = g.options.filter((o) => !o.soldOut);
+  if (g.kind === 'multi') return available.filter((o) => o.isDefault).slice(0, g.max ?? Infinity).map((o) => o.id);
+  const d = available.find((o) => o.isDefault) ?? available[0];
+  return d ? [d.id] : [];
 }

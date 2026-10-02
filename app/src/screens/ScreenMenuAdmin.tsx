@@ -7,6 +7,8 @@ import { Chip } from '../components/Chip';
 import { Field, inputStyle } from '../components/Field';
 import { Icon } from '../components/Icon';
 import { Thumb } from '../components/Thumb';
+import { Badge, Check } from '../components/FormBits';
+import { AddonPanel } from './AddonAdmin';
 import { CATEGORY_LABEL, CATEGORY_ORDER, fmtRp } from '../data/menu';
 import { compressProofImage } from '../data/payment';
 import {
@@ -43,7 +45,54 @@ function errorMessage(e: unknown): string {
   return 'Gagal menyimpan. Periksa koneksi lalu coba lagi.';
 }
 
+type Tab = 'menu' | 'addon';
+
 export function ScreenMenuAdmin() {
+  const [tab, setTab] = useState<Tab>('menu');
+  return (
+    <div className="pos">
+      <Sidebar active="menu-admin" />
+      <div className="pos-main">
+        <TopBar
+          title="Kelola Menu"
+          subtitle="Menu, add-on, harga & foto"
+          right={
+            <div role="tablist" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 12, background: 'var(--bg-2)' }}>
+              {(['menu', 'addon'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  role="tab"
+                  aria-selected={tab === t}
+                  onClick={() => setTab(t)}
+                  style={{
+                    height: 36,
+                    minWidth: 96,
+                    padding: '0 16px',
+                    borderRadius: 9,
+                    border: 0,
+                    background: tab === t ? 'var(--surface)' : 'transparent',
+                    boxShadow: tab === t ? 'var(--shadow-sm)' : 'none',
+                    color: tab === t ? 'var(--green)' : 'var(--ink-2)',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  {t === 'menu' ? 'Menu' : 'Add-on'}
+                </button>
+              ))}
+            </div>
+          }
+        />
+        {tab === 'menu' ? <MenuPanel /> : <AddonPanel />}
+      </div>
+    </div>
+  );
+}
+
+function MenuPanel() {
   const { reloadMenu } = useApp();
   const [items, setItems] = useState<MenuItem[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -112,20 +161,16 @@ export function ScreenMenuAdmin() {
   };
 
   return (
-    <div className="pos">
-      <Sidebar active="menu-admin" />
-      <div className="pos-main">
-        <TopBar
-          title="Kelola Menu"
-          subtitle={`${counts.all} menu aktif · foto, harga & ketersediaan`}
-          right={
-            <Btn kind="primary" icon="plus" onClick={() => select(null)}>
-              Tambah Menu
-            </Btn>
-          }
-        />
         <div className="split split-collapse-md" style={splitCols('1fr 420px')}>
           <div className="pad" style={{ padding: '20px 24px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 160, fontSize: 13, color: 'var(--ink-3)' }}>
+                <b style={{ color: 'var(--ink)' }}>{counts.all}</b> menu aktif
+              </div>
+              <Btn kind="primary" icon="plus" onClick={() => select(null)}>
+                Tambah Menu
+              </Btn>
+            </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {(['all', ...CATEGORY_ORDER, 'inactive'] as Filter[]).map((f) => (
                 <Chip key={f} active={filter === f} count={counts[f]} onClick={() => setFilter(f)}>
@@ -253,8 +298,6 @@ export function ScreenMenuAdmin() {
             />
           </aside>
         </div>
-      </div>
-    </div>
   );
 }
 
@@ -478,25 +521,5 @@ function MenuForm({ item, onSaved, onCancel, onDelete }: FormProps) {
         </div>
       )}
     </form>
-  );
-}
-
-function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--green)' }} />
-      {label}
-    </label>
-  );
-}
-
-function Badge({ tone, children }: { tone: 'yellow' | 'red' | 'grey'; children: React.ReactNode }) {
-  const c = {
-    yellow: ['var(--yellow-soft)', '#7a5a08'],
-    red: ['var(--danger-soft)', 'var(--danger)'],
-    grey: ['var(--bg-2)', 'var(--ink-3)'],
-  }[tone];
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: c[0], color: c[1] }}>{children}</span>
   );
 }

@@ -33,7 +33,7 @@ export function ScreenCart() {
           title="Review Pesanan"
           subtitle={`Pesanan #${orderNo} · Sebelum lanjut ke pembayaran`}
           right={
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Btn kind="ghost" icon="back" onClick={() => goto('menu')}>
                 Tambah Item Lagi
               </Btn>

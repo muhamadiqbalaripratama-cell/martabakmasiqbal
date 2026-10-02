@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CartLine, MenuItem, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from '../types';
+import type { CartLine, MenuItem, OptionGroup, OrderMeta, PaymentMethod, PaymentProof, Screen, User } from '../types';
 
 export type AppState = {
   screen: Screen;
@@ -16,6 +16,8 @@ export type AppState = {
   submitting: boolean;
   // Menu aktif dari server (null = belum dimuat).
   menu: MenuItem[] | null;
+  // Add-on dari server (null = belum dimuat).
+  optionGroups: OptionGroup[] | null;
   menuError: boolean;
   orderMeta: OrderMeta;
 };

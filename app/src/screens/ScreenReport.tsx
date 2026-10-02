@@ -61,7 +61,7 @@ export function ScreenReport() {
           title="Laporan Penjualan"
           subtitle="Ringkasan harian & bukti pembayaran"
           right={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <input
                 type="date"
                 value={date}
