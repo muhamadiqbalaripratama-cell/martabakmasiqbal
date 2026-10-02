@@ -21,6 +21,8 @@ export type Option = {
   // Untuk tampilan ubin topping.
   monogram?: string;
   accent?: Accent;
+  // Foto add-on (file di app/public/addons/<id>.jpg).
+  image?: string;
   soldOut?: boolean;
 };
 
@@ -53,15 +55,15 @@ const TOPPINGS_MANIS: OptionGroup = {
   max: 3,
   defaults: [],
   options: [
-    { id: 't1', label: 'Keju Ekstra', price: 8000, monogram: 'K', accent: 'yellow' },
-    { id: 't2', label: 'Cokelat', price: 6000, monogram: 'C', accent: 'cocoa' },
-    { id: 't3', label: 'Kacang', price: 5000, monogram: 'K', accent: 'cream' },
-    { id: 't4', label: 'Wijen', price: 3000, monogram: 'W', accent: 'cream' },
-    { id: 't5', label: 'Susu Kental', price: 4000, monogram: 'S', accent: 'yellow' },
-    { id: 't6', label: 'Pisang', price: 6000, monogram: 'P', accent: 'yellow' },
-    { id: 't7', label: 'Nutella', price: 12000, monogram: 'N', accent: 'cocoa' },
-    { id: 't8', label: 'Oreo', price: 8000, monogram: 'O', accent: 'cocoa' },
-    { id: 't9', label: 'Greentea', price: 8000, monogram: 'G', accent: 'green' },
+    { id: 't1', label: 'Keju Ekstra', price: 8000, monogram: 'K', accent: 'yellow', image: '/addons/t1.jpg' },
+    { id: 't2', label: 'Cokelat', price: 6000, monogram: 'C', accent: 'cocoa', image: '/addons/t2.jpg' },
+    { id: 't3', label: 'Kacang', price: 5000, monogram: 'K', accent: 'cream', image: '/addons/t3.jpg' },
+    { id: 't4', label: 'Wijen', price: 3000, monogram: 'W', accent: 'cream', image: '/addons/t4.jpg' },
+    { id: 't5', label: 'Susu Kental', price: 4000, monogram: 'S', accent: 'yellow', image: '/addons/t5.jpg' },
+    { id: 't6', label: 'Pisang', price: 6000, monogram: 'P', accent: 'yellow', image: '/addons/t6.jpg' },
+    { id: 't7', label: 'Nutella', price: 12000, monogram: 'N', accent: 'cocoa', image: '/addons/t7.jpg' },
+    { id: 't8', label: 'Oreo', price: 8000, monogram: 'O', accent: 'cocoa', image: '/addons/t8.jpg' },
+    { id: 't9', label: 'Greentea', price: 8000, monogram: 'G', accent: 'green', image: '/addons/t9.jpg' },
   ],
 };
 
@@ -95,10 +97,10 @@ const TOPPINGS_TELUR: OptionGroup = {
   max: 3,
   defaults: [],
   options: [
-    { id: 'x1', label: 'Telur Ekstra', price: 6000, monogram: 'T', accent: 'yellow' },
-    { id: 'x2', label: 'Daging Ekstra', price: 10000, monogram: 'D', accent: 'cocoa' },
-    { id: 'x3', label: 'Mozzarella', price: 9000, monogram: 'M', accent: 'cream' },
-    { id: 'x4', label: 'Sosis', price: 6000, monogram: 'S', accent: 'cocoa' },
+    { id: 'x1', label: 'Telur Ekstra', price: 6000, monogram: 'T', accent: 'yellow', image: '/addons/x1.jpg' },
+    { id: 'x2', label: 'Daging Ekstra', price: 10000, monogram: 'D', accent: 'cocoa', image: '/addons/x2.jpg' },
+    { id: 'x3', label: 'Mozzarella', price: 9000, monogram: 'M', accent: 'cream', image: '/addons/x3.jpg' },
+    { id: 'x4', label: 'Sosis', price: 6000, monogram: 'S', accent: 'cocoa', image: '/addons/x4.jpg' },
   ],
 };
 

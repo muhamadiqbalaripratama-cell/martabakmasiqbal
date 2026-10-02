@@ -52,13 +52,23 @@ export const useApp = (): AppAPI => {
 export const DISCOUNT_RATE = 0.1; // SENINHIJAU
 export const TAX_RATE = 0.11;
 
+// Pembulatan (harus sama dengan backend/src/routes/orders.ts):
+// diskon & PPN ke Rp100 terdekat, total akhir ke Rp1.000 terdekat.
+const ROUND_LINE = 100;
+const ROUND_TOTAL = 1000;
+const roundTo = (n: number, unit: number) => Math.round(n / unit) * unit;
+
 export const totalsFor = (lines: CartLine[]) => {
   const sub = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
-  const disc = Math.round(sub * DISCOUNT_RATE);
-  const tax = Math.round((sub - disc) * TAX_RATE);
-  const total = sub - disc + tax;
-  return { sub, disc, tax, total, itemCount: lines.reduce((s, l) => s + l.qty, 0) };
+  const disc = roundTo(sub * DISCOUNT_RATE, ROUND_LINE);
+  const tax = roundTo((sub - disc) * TAX_RATE, ROUND_LINE);
+  const total = roundTo(sub - disc + tax, ROUND_TOTAL);
+  // Selisih pembulatan total (bisa minus), ditampilkan di ringkasan & struk.
+  const rounding = total - (sub - disc + tax);
+  return { sub, disc, tax, rounding, total, itemCount: lines.reduce((s, l) => s + l.qty, 0) };
 };
+
+export const fmtRounding = (n: number) => (n < 0 ? '−' : '+') + 'Rp' + Math.abs(n).toLocaleString('id-ID');
 
 // "Dine-in · Meja 7 · Budi" / "Take-away · Budi" / "Dine-in"
 export const orderMetaLabel = (m: OrderMeta) =>

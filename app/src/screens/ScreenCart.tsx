@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 import { Thumb } from '../components/Thumb';
 import { Row } from '../components/Row';
 import { fmtRp } from '../data/menu';
-import { useApp, totalsFor } from '../state/store';
+import { fmtRounding, useApp, totalsFor } from '../state/store';
 
 const qtyBtn2 = {
   width: 30,
@@ -23,7 +23,7 @@ export function ScreenCart() {
   const { state, goto, updateQty, removeLine, clearCart, setOrderMeta } = useApp();
   const meta = state.orderMeta;
   const { lines, orderNo } = state;
-  const { sub, disc, tax, total, itemCount } = totalsFor(lines);
+  const { sub, disc, tax, rounding, total, itemCount } = totalsFor(lines);
 
   return (
     <div className="pos">
@@ -271,6 +271,7 @@ export function ScreenCart() {
               <Row k={`Subtotal (${itemCount} item)`} v={fmtRp(sub)} />
               <Row k="Diskon Senin Hijau (10%)" v={'−' + fmtRp(disc)} valueColor="var(--danger)" />
               <Row k="PPN 11%" v={fmtRp(tax)} />
+              {rounding !== 0 && <Row k="Pembulatan" v={fmtRounding(rounding)} />}
             </div>
             <div style={{ height: 14, borderBottom: '1px dashed var(--hairline-2)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 14 }}>

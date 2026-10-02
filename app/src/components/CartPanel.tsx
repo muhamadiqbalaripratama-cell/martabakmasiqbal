@@ -4,7 +4,7 @@ import { Row } from './Row';
 import { Btn } from './Btn';
 import { Icon } from './Icon';
 import { fmtRp } from '../data/menu';
-import { useApp, totalsFor } from '../state/store';
+import { fmtRounding, useApp, totalsFor } from '../state/store';
 
 type CartPanelProps = {
   type?: string;
@@ -21,7 +21,7 @@ export function CartPanel({
 }: CartPanelProps) {
   const { state, updateQty } = useApp();
   const { lines, orderNo } = state;
-  const { sub, disc, tax, total, itemCount } = totalsFor(lines);
+  const { sub, disc, tax, rounding, total, itemCount } = totalsFor(lines);
   return (
     <aside
       className="cart-panel"
@@ -101,6 +101,7 @@ export function CartPanel({
         <Row k="Subtotal" v={fmtRp(sub)} />
         {disc > 0 && <Row k="Diskon Senin Hijau (10%)" v={'−' + fmtRp(disc)} valueColor="var(--danger)" />}
         <Row k="PPN 11%" v={fmtRp(tax)} />
+        {rounding !== 0 && <Row k="Pembulatan" v={fmtRounding(rounding)} />}
         <div style={{ height: 8 }} />
         <div
           style={{

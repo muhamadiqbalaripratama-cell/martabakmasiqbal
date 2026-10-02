@@ -171,6 +171,8 @@ Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker 
 
 - **Menu** (30 item: martabak manis, martabak telur, minuman, paket hemat) beserta foto ilustrasi otomatis dimasukkan ke database saat backend pertama kali jalan. Sumbernya `backend/src/seed/menu.ts` dan `backend/assets/menu/*.jpg`.
 - Setelah itu menu dikelola admin dari layar **Kelola Menu**: ubah nama/harga/deskripsi, **upload foto asli**, tandai *habis*, atau sembunyikan menu. Perubahan admin tidak tertimpa saat backend restart. Operator juga bisa menandai menu habis/tersedia lewat API.
+- **Pembulatan harga**: diskon & PPN dibulatkan ke Rp100 terdekat, total akhir ke Rp1.000 terdekat; selisihnya tampil sebagai baris *Pembulatan* di ringkasan & struk, dan tersimpan di kolom `orders.rounding`.
+- **Foto add-on** (topping & tambahan isian) ada di `app/public/addons/<id>.jpg`; daftar add-on & harganya di `app/src/data/menu.ts`. Untuk mengganti foto, timpa file dengan nama yang sama lalu build ulang.
 - **Info toko di struk & layar QRIS**: edit `app/src/data/store.ts` (alamat, telepon, Instagram, NMID QRIS). Baris yang dikosongkan tidak ditampilkan.
 - **Gambar QRIS asli toko**: simpan sebagai `app/public/qris-toko.png`, lalu build ulang (`docker compose up -d --build`). Selama file ini belum ada, layar QRIS menampilkan peringatan dan QR contoh yang **tidak bisa dipakai bayar**.
 

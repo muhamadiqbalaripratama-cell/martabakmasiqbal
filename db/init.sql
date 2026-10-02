@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS orders (
   subtotal        INT          NOT NULL,
   discount        INT          NOT NULL DEFAULT 0,
   tax             INT          NOT NULL DEFAULT 0,
+  rounding        INT          NOT NULL DEFAULT 0,
   total           INT          NOT NULL,
   payment_method  VARCHAR(32)  NOT NULL,
   cash_received   INT          NOT NULL DEFAULT 0,

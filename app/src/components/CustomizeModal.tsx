@@ -111,11 +111,12 @@ type ToppingTileProps = {
   selected?: boolean;
   monogram: string;
   accent?: keyof typeof TILE_SW;
+  image?: string;
   soldOut?: boolean;
   onClick?: () => void;
 };
 
-function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', soldOut, onClick }: ToppingTileProps) {
+function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', image, soldOut, onClick }: ToppingTileProps) {
   const sw = TILE_SW[accent];
   return (
     <button
@@ -136,6 +137,14 @@ function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', soldO
         font: 'inherit',
       }}
     >
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: sw[0] }}
+        />
+      ) : (
       <div
         style={{
           height: 56,
@@ -152,6 +161,7 @@ function ToppingTile({ label, price, selected, monogram, accent = 'cocoa', soldO
       >
         {monogram}
       </div>
+      )}
       <div>
         <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
         <div className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
@@ -395,6 +405,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                         price={o.price}
                         monogram={o.monogram ?? o.label[0]}
                         accent={o.accent}
+                        image={o.image}
                         soldOut={o.soldOut}
                         selected={picks[g.id]?.includes(o.id)}
                         onClick={() => pick(g.id, o.id, 'multi', g.max)}

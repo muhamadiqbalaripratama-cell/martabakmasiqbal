@@ -85,6 +85,11 @@ export async function ensureSchema(): Promise<void> {
     `);
   }
 
+  // Selisih pembulatan total pesanan (lihat routes/orders.ts).
+  if (!(await hasColumn('orders', 'rounding'))) {
+    await pool.query('ALTER TABLE orders ADD COLUMN rounding INT NOT NULL DEFAULT 0 AFTER tax');
+  }
+
   // Menu: deskripsi, foto, urutan, dan status aktif (dihapus = nonaktif).
   const menuCols: [string, string][] = [
     ['description', 'TEXT NULL AFTER name'],

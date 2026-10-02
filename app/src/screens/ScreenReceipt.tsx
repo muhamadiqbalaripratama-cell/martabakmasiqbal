@@ -8,11 +8,11 @@ import { Logo } from '../components/Logo';
 import { fmtRp } from '../data/menu';
 import { needsProof, PAYMENT_LABEL } from '../data/payment';
 import { STORE } from '../data/store';
-import { orderMetaLabel, useApp, totalsFor } from '../state/store';
+import { fmtRounding, orderMetaLabel, useApp, totalsFor } from '../state/store';
 
 export function ScreenReceipt() {
   const { state, startNewOrder, goto, user } = useApp();
-  const { sub, disc, tax, total } = totalsFor(state.lines);
+  const { sub, disc, tax, rounding, total } = totalsFor(state.lines);
   const isCash = state.paymentMethod === 'cash';
   const paid = isCash ? state.cashReceived : total;
   const change = Math.max(0, paid - total);
@@ -32,6 +32,7 @@ export function ScreenReceipt() {
     `Subtotal: ${fmtRp(sub)}`,
     ...(disc > 0 ? [`Diskon: -${fmtRp(disc)}`] : []),
     `PPN 11%: ${fmtRp(tax)}`,
+    ...(rounding !== 0 ? [`Pembulatan: ${fmtRounding(rounding)}`] : []),
     `*Total: ${fmtRp(total)}*`,
     `Bayar ${methodLabel}: ${fmtRp(paid)}`,
     ...(change > 0 ? [`Kembali: ${fmtRp(change)}`] : []),
@@ -286,6 +287,7 @@ export function ScreenReceipt() {
               <RcLine k="Subtotal" v={fmtRp(sub)} />
               {disc > 0 && <RcLine k="Disc SENINHIJAU" v={'−' + fmtRp(disc)} />}
               <RcLine k="PPN 11%" v={fmtRp(tax)} />
+              {rounding !== 0 && <RcLine k="Pembulatan" v={fmtRounding(rounding)} />}
               <div style={{ borderTop: '1px dashed var(--hairline-2)', margin: '10px 0' }} />
               <div
                 style={{

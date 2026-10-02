@@ -319,7 +319,7 @@ const SPECS = {
   p4: () => paket({ label: 'ARISAN', items: [{ k: 'manis', x: 0, y: 40, s: 0.4 }, { k: 'manis', x: 205, y: 30, s: 0.4 }, { k: 'manis', x: 410, y: 40, s: 0.4 }, { k: 'telur', x: 70, y: 180, s: 0.45 }, { k: 'telur', x: 330, y: 180, s: 0.45 }] }, 54),
 };
 
-module.exports = { SPECS, W, H, svg: (id) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${SPECS[id]()}</svg>` };
+module.exports = { SPECS, T, rng, W, H, svg: (id) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${SPECS[id]()}</svg>` };
 
 if (require.main === module) {
   const { chromium } = require('playwright');

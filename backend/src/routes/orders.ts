@@ -8,6 +8,11 @@ export const ordersRouter = Router();
 
 const TAX_RATE = 0.11;
 const DISCOUNT_RATE = 0.1;
+// Pembulatan (harus sama dengan app/src/state/store.ts totalsFor):
+// diskon & PPN ke Rp100 terdekat, total akhir ke Rp1.000 terdekat.
+const ROUND_LINE = 100;
+const ROUND_TOTAL = 1000;
+const roundTo = (n: number, unit: number) => Math.round(n / unit) * unit;
 
 // Metode pembayaran yang diterima: Tunai, QRIS, Transfer Bank BCA.
 const PAYMENT_METHODS = ['cash', 'qris', 'transfer-bca'];
@@ -84,9 +89,10 @@ ordersRouter.post('/', requireAuth(), async (req, res) => {
     await conn.beginTransaction();
 
     const subtotal = lines.reduce((s, l) => s + l.unit_price * l.qty, 0);
-    const discount = Math.round(subtotal * DISCOUNT_RATE);
-    const tax = Math.round((subtotal - discount) * TAX_RATE);
-    const total = subtotal - discount + tax;
+    const discount = roundTo(subtotal * DISCOUNT_RATE, ROUND_LINE);
+    const tax = roundTo((subtotal - discount) * TAX_RATE, ROUND_LINE);
+    const total = roundTo(subtotal - discount + tax, ROUND_TOTAL);
+    const rounding = total - (subtotal - discount + tax);
     const cash_received =
       body.payment_method === 'cash'
         ? Math.max(total, Math.floor(Number(body.cash_received) || total))
@@ -95,9 +101,9 @@ ordersRouter.post('/', requireAuth(), async (req, res) => {
 
     const [result] = await conn.query<ResultSetHeader>(
       `INSERT INTO orders
-         (type, table_no, customer_name, subtotal, discount, tax, total,
+         (type, table_no, customer_name, subtotal, discount, tax, rounding, total,
           payment_method, cash_received, change_due, status, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?)`,
       [
         body.type || 'dine-in',
         body.table_no || null,
@@ -105,6 +111,7 @@ ordersRouter.post('/', requireAuth(), async (req, res) => {
         subtotal,
         discount,
         tax,
+        rounding,
         total,
         body.payment_method,
         cash_received,
@@ -138,6 +145,7 @@ ordersRouter.post('/', requireAuth(), async (req, res) => {
       subtotal,
       discount,
       tax,
+      rounding,
       total,
       cash_received,
       change_due,
