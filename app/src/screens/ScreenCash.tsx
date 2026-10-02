@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { fmtRp } from '../data/menu';
@@ -73,7 +74,7 @@ export function ScreenCash() {
   return (
     <div className="pos">
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Pembayaran Tunai"
           subtitle={`Pesanan #${state.orderNo} · Masukkan nominal yang diterima dari pelanggan`}
@@ -83,15 +84,16 @@ export function ScreenCash() {
             </Btn>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 0 }}>
+        <div className="split" style={splitCols('1fr 1fr')}>
           {/* Left — display */}
           <div
+            className="pad"
             style={{
               padding: '32px',
               display: 'flex',
               flexDirection: 'column',
               gap: 24,
-              justifyContent: 'center',
+              justifyContent: 'safe center',
             }}
           >
             <div
@@ -113,7 +115,7 @@ export function ScreenCash() {
                 className="tnum"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: 52,
+                  fontSize: 'clamp(30px, 5vw, 52px)',
                   fontWeight: 700,
                   letterSpacing: '-0.03em',
                   marginTop: 4,
@@ -165,7 +167,7 @@ export function ScreenCash() {
                 className="tnum"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: 56,
+                  fontSize: 'clamp(30px, 5vw, 56px)',
                   fontWeight: 700,
                   color: 'var(--ink)',
                   letterSpacing: '-0.03em',
@@ -242,7 +244,7 @@ export function ScreenCash() {
                 className="tnum"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: 48,
+                  fontSize: 'clamp(28px, 4.5vw, 48px)',
                   fontWeight: 700,
                   color: canPay ? 'var(--green)' : 'var(--danger)',
                   letterSpacing: '-0.03em',
@@ -255,9 +257,8 @@ export function ScreenCash() {
 
           {/* Right — keypad */}
           <div
+            className="split-aside pad"
             style={{
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--hairline)',
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',

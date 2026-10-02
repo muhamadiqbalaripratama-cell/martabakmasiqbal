@@ -28,26 +28,17 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
   const { goto, user, logout } = useApp();
   const items = ITEMS.filter((it) => !it.adminOnly || user.role === 'admin');
   return (
-    <aside
-      style={{
-        width: 88,
-        flexShrink: 0,
-        background: 'var(--surface)',
-        borderRight: '1px solid var(--hairline)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '20px 0 16px',
-      }}
-    >
-      <Logo size={44} />
-      <div style={{ height: 28 }} />
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', padding: '0 12px' }}>
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <Logo size={44} />
+      </div>
+      <nav className="sidebar-nav">
         {items.map((it) => {
           const on = it.id === active;
           return (
             <div
               key={it.id}
+              className={it.screen ? undefined : 'sidebar-item-disabled'}
               role={it.screen ? 'button' : undefined}
               onClick={it.screen ? () => goto(it.screen!) : undefined}
               style={{
@@ -67,6 +58,7 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
             >
               {on && (
                 <div
+                  className="sidebar-active-bar"
                   style={{
                     position: 'absolute',
                     left: -12,
@@ -85,9 +77,9 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
           );
         })}
       </nav>
-      <div style={{ flex: 1 }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+      <div className="sidebar-user">
         <button
+          className="sidebar-logout"
           onClick={() => {
             if (window.confirm(`Keluar dari akun ${user.name}?`)) logout();
           }}
@@ -108,6 +100,7 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
           <Icon name="logout" size={20} />
         </button>
         <div
+          className="sidebar-avatar"
           title={`${user.name} (${user.role === 'admin' ? 'Admin' : 'Operator'})`}
           style={{
             width: 44,
@@ -124,7 +117,7 @@ export function Sidebar({ active = 'menu' }: { active?: string }) {
         >
           {initials(user.name)}
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="sidebar-role" style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           {user.role === 'admin' ? 'Admin' : 'Operator'}
         </div>
       </div>

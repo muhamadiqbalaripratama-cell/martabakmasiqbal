@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Row } from '../components/Row';
@@ -39,7 +40,7 @@ export function ScreenCart() {
   return (
     <div className="pos">
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Review Pesanan"
           subtitle={`Pesanan #${orderNo} · Sebelum lanjut ke pembayaran`}
@@ -54,10 +55,10 @@ export function ScreenCart() {
             </div>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', minHeight: 0 }}>
-          <div style={{ padding: '24px 28px', overflow: 'auto' }}>
+        <div className="split split-collapse-md" style={splitCols('1fr 420px')}>
+          <div className="pad" style={{ padding: '24px 28px', overflow: 'auto' }}>
             {/* Order meta */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 18 }}>
               {[
                 { k: 'Tipe Pesanan', v: 'Dine-in', icon: 'store' },
                 { k: 'Nomor Meja', v: 'Meja 07', icon: 'table' },
@@ -107,10 +108,8 @@ export function ScreenCart() {
               }}
             >
               <div
+                className="cart-row cart-head"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 110px 110px 110px 40px',
-                  gap: 12,
                   padding: '14px 0',
                   borderBottom: '1px solid var(--hairline)',
                   fontSize: 11,
@@ -120,11 +119,11 @@ export function ScreenCart() {
                   textTransform: 'uppercase',
                 }}
               >
-                <div>Item</div>
-                <div style={{ textAlign: 'right' }}>Harga</div>
-                <div style={{ textAlign: 'center' }}>Qty</div>
-                <div style={{ textAlign: 'right' }}>Subtotal</div>
-                <div></div>
+                <div className="c-item">Item</div>
+                <div className="c-price" style={{ textAlign: 'right' }}>Harga</div>
+                <div className="c-qty" style={{ textAlign: 'center' }}>Qty</div>
+                <div className="c-sub" style={{ textAlign: 'right' }}>Subtotal</div>
+                <div className="c-del"></div>
               </div>
               {lines.length === 0 && (
                 <div
@@ -141,16 +140,14 @@ export function ScreenCart() {
               {lines.map((l, i) => (
                 <div
                   key={l.id}
+                  className="cart-row"
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 110px 110px 110px 40px',
-                    gap: 12,
                     padding: '16px 0',
                     borderBottom: i < lines.length - 1 ? '1px solid var(--hairline)' : 'none',
                     alignItems: 'center',
                   }}
                 >
-                  <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
+                  <div className="c-item" style={{ display: 'flex', gap: 12, minWidth: 0 }}>
                     <div
                       style={{
                         width: 48,
@@ -173,10 +170,10 @@ export function ScreenCart() {
                       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{l.mods}</div>
                     </div>
                   </div>
-                  <div className="tnum" style={{ textAlign: 'right', fontSize: 13, color: 'var(--ink-2)' }}>
+                  <div className="tnum c-price" style={{ textAlign: 'right', fontSize: 13, color: 'var(--ink-2)' }}>
                     {fmtRp(l.unitPrice)}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <div className="c-qty" style={{ display: 'flex', justifyContent: 'center' }}>
                     <div
                       style={{
                         display: 'inline-flex',
@@ -199,12 +196,12 @@ export function ScreenCart() {
                     </div>
                   </div>
                   <div
-                    className="tnum"
+                    className="tnum c-sub"
                     style={{ textAlign: 'right', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}
                   >
                     {fmtRp(l.unitPrice * l.qty)}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div className="c-del" style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => removeLine(l.id)}
                       style={{
@@ -269,9 +266,8 @@ export function ScreenCart() {
 
           {/* Right summary */}
           <aside
+            className="split-aside pad"
             style={{
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--hairline)',
               display: 'flex',
               flexDirection: 'column',
               padding: '24px 24px 20px',

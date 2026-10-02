@@ -48,8 +48,8 @@ export function ScreenLogin({ checking, onLogin }: Props) {
     <div className="pos">
       {/* Kiri — brand */}
       <div
+        className="login-brand"
         style={{
-          flex: 1,
           background: 'linear-gradient(140deg, var(--green) 0%, #2c7a47 75%)',
           color: '#fff',
           padding: 56,
@@ -75,7 +75,7 @@ export function ScreenLogin({ checking, onLogin }: Props) {
         <div
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 48,
+            fontSize: 'clamp(32px, 4.5vw, 48px)',
             fontWeight: 700,
             letterSpacing: '-0.03em',
             lineHeight: 1.05,
@@ -91,8 +91,11 @@ export function ScreenLogin({ checking, onLogin }: Props) {
       </div>
 
       {/* Kanan — form */}
-      <div style={{ width: 520, background: 'var(--surface)', display: 'grid', placeItems: 'center' }}>
-        <form onSubmit={handleSubmit} style={{ width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="login-form" style={{ background: 'var(--surface)', display: 'grid', placeItems: 'center', overflow: 'auto' }}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="only-mobile" style={{ marginBottom: 8 }}>
+            <Logo size={48} />
+          </div>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em' }}>
               Masuk

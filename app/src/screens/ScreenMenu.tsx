@@ -8,10 +8,12 @@ import { CartPanel } from '../components/CartPanel';
 import { CustomizeModal } from '../components/CustomizeModal';
 import { Icon } from '../components/Icon';
 import { MENU } from '../data/menu';
-import { useApp } from '../state/store';
+import { fmtRp } from '../data/menu';
+import { useApp, totalsFor } from '../state/store';
 
 export function ScreenMenu() {
   const { state, goto, openCustomize } = useApp();
+  const { total, itemCount } = totalsFor(state.lines);
   const [cat, setCat] = useState<'all' | 'manis' | 'asin' | 'drink' | 'paket'>('manis');
 
   const cats: { id: typeof cat; label: string; count: number }[] = [
@@ -30,14 +32,14 @@ export function ScreenMenu() {
   return (
     <div className="pos">
       <Sidebar active="menu" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Menu Kasir"
           subtitle="Cabang Sudirman · Kasir: Iqbal · Shift Sore"
           search="Cari menu, kode item, atau scan barcode…"
           right={
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <div style={{ textAlign: 'right' }}>
+              <div className="topbar-right-hide-mobile" style={{ textAlign: 'right' }}>
                 <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                   Sen, 10 Mei 2026
                 </div>
@@ -45,7 +47,7 @@ export function ScreenMenu() {
                   19:42:08
                 </div>
               </div>
-              <div style={{ width: 1, height: 28, background: 'var(--hairline)', marginLeft: 4 }} />
+              <div className="topbar-right-hide-mobile" style={{ width: 1, height: 28, background: 'var(--hairline)', marginLeft: 4 }} />
               <Btn kind="ghost" size="md" icon="receipt">
                 Pesanan Hari Ini · {state.todayCount}
               </Btn>
@@ -54,8 +56,10 @@ export function ScreenMenu() {
         />
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <div
+            className="pad"
             style={{
               flex: 1,
+              minWidth: 0,
               padding: '20px 24px',
               overflow: 'auto',
               display: 'flex',
@@ -99,6 +103,7 @@ export function ScreenMenu() {
                 </div>
               </div>
               <div
+                className="hide-mobile"
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 11,
@@ -123,7 +128,7 @@ export function ScreenMenu() {
 
             {showManis && (
               <>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                   <div
                     style={{
                       fontFamily: 'var(--font-display)',
@@ -138,7 +143,7 @@ export function ScreenMenu() {
                     12 item · Urutkan: <b style={{ color: 'var(--ink-2)' }}>Terlaris</b>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                   {manis.map((m) => (
                     <MenuCard key={m.id} {...m} onAdd={() => openCustomize(m)} />
                   ))}
@@ -168,7 +173,7 @@ export function ScreenMenu() {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>6 item</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                   {asin.map((m) => (
                     <MenuCard key={m.id} {...m} onAdd={() => openCustomize(m)} />
                   ))}
@@ -182,6 +187,36 @@ export function ScreenMenu() {
             ctaLabel="Lanjut ke Pembayaran"
             onCta={() => goto('cart')}
           />
+        </div>
+
+        {/* HP: ringkasan keranjang menggantikan panel samping */}
+        <div
+          className="cart-bar"
+          style={{
+            alignItems: 'center',
+            gap: 12,
+            padding: '10px 16px',
+            background: 'var(--surface)',
+            borderTop: '1px solid var(--hairline)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              Pesanan #{state.orderNo} · {itemCount} item
+            </div>
+            <div className="tnum" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--green)' }}>
+              {fmtRp(total)}
+            </div>
+          </div>
+          <Btn
+            kind="primary"
+            disabled={itemCount === 0}
+            onClick={() => goto('cart')}
+            style={{ opacity: itemCount === 0 ? 0.55 : 1 }}
+          >
+            Lihat Keranjang
+            <Icon name="chev-r" size={16} />
+          </Btn>
         </div>
       </div>
 

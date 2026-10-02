@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
@@ -62,7 +63,7 @@ export function ScreenTransfer() {
   return (
     <div className="pos">
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title={`Transfer Bank ${BANK_TRANSFER.bank}`}
           subtitle={`Pesanan #${state.orderNo} · ${proof ? 'Bukti transfer siap' : 'Menunggu bukti transfer'}`}
@@ -72,15 +73,16 @@ export function ScreenTransfer() {
             </Btn>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.3fr 1fr', minHeight: 0 }}>
+        <div className="split split-collapse-md" style={splitCols('1.3fr 1fr')}>
           {/* Left — rekening tujuan */}
           <div
+            className="pad"
             style={{
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'safe center',
               background: 'var(--bg)',
             }}
           >
@@ -94,7 +96,8 @@ export function ScreenTransfer() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 20,
-                width: 480,
+                width: '100%',
+                maxWidth: 480,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -146,9 +149,8 @@ export function ScreenTransfer() {
 
           {/* Right — langkah & konfirmasi */}
           <aside
+            className="split-aside pad"
             style={{
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--hairline)',
               padding: '28px 28px',
               display: 'flex',
               flexDirection: 'column',
@@ -248,7 +250,8 @@ function CopyField({ label, value, note, copied, onCopy, highlight }: CopyFieldP
           className="tnum"
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 30,
+            fontSize: 'clamp(20px, 5.5vw, 30px)',
+            whiteSpace: 'nowrap',
             fontWeight: 700,
             letterSpacing: '-0.01em',
             color: highlight ? 'var(--green)' : 'var(--ink)',

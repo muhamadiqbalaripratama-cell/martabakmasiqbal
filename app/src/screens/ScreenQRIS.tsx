@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
@@ -31,7 +32,7 @@ export function ScreenQRIS() {
   return (
     <div className="pos">
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Scan QRIS"
           subtitle={`Pesanan #${state.orderNo} · ${proof ? 'Bukti pembayaran siap' : 'Menunggu bukti pembayaran'}`}
@@ -68,15 +69,16 @@ export function ScreenQRIS() {
             </div>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.3fr 1fr', minHeight: 0 }}>
+        <div className="split split-collapse-md" style={splitCols('1.3fr 1fr')}>
           {/* Left — QR */}
           <div
+            className="pad"
             style={{
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'safe center',
               gap: 20,
               background: 'var(--bg)',
             }}
@@ -93,7 +95,8 @@ export function ScreenQRIS() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 18,
-                width: 460,
+                width: '100%',
+                maxWidth: 460,
               }}
             >
               <div
@@ -136,7 +139,7 @@ export function ScreenQRIS() {
                 </div>
               </div>
 
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
                 <QRBlock size={300} />
                 {/* Corner brackets */}
                 {[
@@ -188,7 +191,7 @@ export function ScreenQRIS() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
               <Btn kind="ghost" icon="print">
                 Cetak QR untuk Pelanggan
               </Btn>
@@ -200,9 +203,8 @@ export function ScreenQRIS() {
 
           {/* Right — status */}
           <aside
+            className="split-aside pad"
             style={{
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--hairline)',
               padding: '28px 28px',
               display: 'flex',
               flexDirection: 'column',

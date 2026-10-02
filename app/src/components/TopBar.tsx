@@ -11,25 +11,22 @@ type TopBarProps = {
 export function TopBar({ title, subtitle, right, search }: TopBarProps) {
   return (
     <div
+      className="topbar"
       style={{
-        height: 72,
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
         borderBottom: '1px solid var(--hairline)',
         background: 'var(--surface)',
         flexShrink: 0,
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        <div className="topbar-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
           {title}
         </div>
         {subtitle && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{subtitle}</div>}
       </div>
       {search && (
         <div
+          className="topbar-search"
           style={{
             flex: 1,
             maxWidth: 360,
@@ -62,8 +59,7 @@ export function TopBar({ title, subtitle, right, search }: TopBarProps) {
           </span>
         </div>
       )}
-      <div style={{ flex: 1 }} />
-      {right}
+      {right && <div className="topbar-right">{right}</div>}
     </div>
   );
 }

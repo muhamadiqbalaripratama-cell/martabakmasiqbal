@@ -24,6 +24,7 @@ export function CartPanel({
   const { sub, disc, tax, total, itemCount } = totalsFor(lines);
   return (
     <aside
+      className="cart-panel"
       style={{
         width: 380,
         flexShrink: 0,

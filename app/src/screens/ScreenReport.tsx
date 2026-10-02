@@ -56,7 +56,7 @@ export function ScreenReport() {
   return (
     <div className="pos" style={{ position: 'relative' }}>
       <Sidebar active="stats" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Laporan Penjualan"
           subtitle="Ringkasan harian & bukti pembayaran"
@@ -86,6 +86,7 @@ export function ScreenReport() {
         />
 
         <div
+          className="pad"
           style={{
             flex: 1,
             minHeight: 0,
@@ -97,8 +98,9 @@ export function ScreenReport() {
           }}
         >
           {/* Ringkasan */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
             <div
+              className="span-mobile"
               style={{
                 padding: '18px 20px',
                 borderRadius: 18,
@@ -111,7 +113,7 @@ export function ScreenReport() {
               </div>
               <div
                 className="tnum"
-                style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 700, marginTop: 4 }}
+                style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 2.6vw, 32px)', fontWeight: 700, marginTop: 4 }}
               >
                 {fmtRp(summary?.total ?? 0)}
               </div>
@@ -134,7 +136,7 @@ export function ScreenReport() {
                   </div>
                   <div
                     className="tnum"
-                    style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginTop: 6 }}
+                    style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(17px, 2vw, 22px)', fontWeight: 700, marginTop: 6 }}
                   >
                     {fmtRp(r.total)}
                   </div>
@@ -170,7 +172,7 @@ export function ScreenReport() {
               overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, marginRight: 'auto' }}>
                 Daftar Pesanan
               </div>
@@ -195,6 +197,7 @@ export function ScreenReport() {
               ))}
             </div>
 
+            <div className="table-scroll">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--ink-3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -244,6 +247,7 @@ export function ScreenReport() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
@@ -262,22 +266,14 @@ function ProofModal({ order, onClose }: { order: OrderRow; onClose: () => void }
   }, [onClose]);
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'rgba(17,36,26,.55)',
-        display: 'grid',
-        placeItems: 'center',
-        zIndex: 20,
-      }}
-    >
+    <div className="modal-backdrop" onClick={onClose} style={{ background: 'rgba(17,36,26,.55)' }}>
       <div
+        className="modal-sheet"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 560,
-          maxHeight: 760,
+          maxWidth: '100%',
+          maxHeight: 'min(760px, 100%)',
           background: 'var(--surface)',
           borderRadius: 20,
           boxShadow: 'var(--shadow-lg)',
@@ -286,8 +282,8 @@ function ProofModal({ order, onClose }: { order: OrderRow; onClose: () => void }
           overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700 }}>
               Bukti {PAYMENT_LABEL[order.payment_method] ?? 'Pembayaran'} · #{order.order_no}
             </div>
@@ -310,7 +306,7 @@ function ProofModal({ order, onClose }: { order: OrderRow; onClose: () => void }
           <img
             src={src}
             alt={`Bukti pembayaran pesanan #${order.order_no}`}
-            style={{ display: 'block', width: '100%', maxHeight: 640, objectFit: 'contain', borderRadius: 10 }}
+            style={{ display: 'block', width: '100%', maxHeight: '70dvh', objectFit: 'contain', borderRadius: 10 }}
           />
         </div>
       </div>

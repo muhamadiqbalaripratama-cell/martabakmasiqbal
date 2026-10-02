@@ -264,24 +264,5 @@ function ScreenSwitcher({ screen }: { screen: Screen }) {
 }
 
 function Stage({ children }: { children: React.ReactNode }) {
-  const [scale, setScale] = useState(1);
-  useEffect(() => {
-    const compute = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      const pad = 24;
-      const s = Math.min((w - pad * 2) / 1280, (h - pad * 2) / 832, 1);
-      setScale(Math.max(0.25, s));
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
-  }, []);
-  return (
-    <div className="pos-stage">
-      <div className="pos-frame" style={{ transform: `scale(${scale})` }}>
-        {children}
-      </div>
-    </div>
-  );
+  return <div className="pos-stage">{children}</div>;
 }

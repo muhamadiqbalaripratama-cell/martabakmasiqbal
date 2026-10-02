@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
@@ -21,7 +22,7 @@ export function ScreenReceipt() {
       style={{ background: 'linear-gradient(180deg, var(--green-tint) 0%, var(--bg) 60%)' }}
     >
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Pembayaran Berhasil"
           subtitle={`Pesanan #${state.orderNo} · Selesai dalam 2 menit 14 detik`}
@@ -36,14 +37,15 @@ export function ScreenReceipt() {
             </div>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.2fr 1fr', minHeight: 0 }}>
+        <div className="split split-collapse-md" style={splitCols('1.2fr 1fr')}>
           {/* Left — celebration & summary */}
           <div
+            className="pad"
             style={{
               padding: '32px 40px',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyContent: 'safe center',
               gap: 24,
             }}
           >
@@ -66,7 +68,7 @@ export function ScreenReceipt() {
                 <div
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 36,
+                    fontSize: 'clamp(26px, 7vw, 36px)',
                     fontWeight: 700,
                     letterSpacing: '-0.025em',
                     lineHeight: 1.05,
@@ -81,7 +83,7 @@ export function ScreenReceipt() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
               {[
                 {
                   k: 'Diterima',
@@ -142,7 +144,7 @@ export function ScreenReceipt() {
               >
                 Kirim Struk
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
                 {[
                   { i: 'print', t: 'Cetak struk' },
                   { i: 'receipt', t: 'WhatsApp' },
@@ -211,16 +213,18 @@ export function ScreenReceipt() {
 
           {/* Right — receipt */}
           <div
+            className="pad"
             style={{
               padding: '28px 32px',
               display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: 'safe center',
+              alignItems: 'safe center',
             }}
           >
             <div
               style={{
-                width: 360,
+                width: '100%',
+                maxWidth: 360,
                 background: '#fff',
                 borderRadius: 16,
                 boxShadow: '0 30px 60px -28px rgba(17,36,26,.32), 0 12px 30px -8px rgba(17,36,26,.16)',

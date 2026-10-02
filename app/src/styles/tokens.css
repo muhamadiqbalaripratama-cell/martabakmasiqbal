@@ -65,31 +65,23 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* The POS frame — fixed 1280×832 tablet landscape, scaled to viewport. */
-.pos-stage {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 30% 20%, #1a2e22, #0b130d 75%);
-  overflow: hidden;
-}
+/* ─── Layout responsif ────────────────────────────────────────────
+   Breakpoint:
+   - Desktop  ≥ 1024px : sidebar kiri, panel berdampingan
+   - Tablet   ≤ 1023px : panel samping lebih sempit
+   - HP       ≤ 767px  : sidebar jadi navigasi bawah, panel ditumpuk
+   Layout ditaruh di class (bukan inline style) supaya bisa diubah media query. */
 
-.pos-frame {
-  width: 1280px;
-  height: 832px;
-  flex-shrink: 0;
-  background: var(--surface);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.04);
-  transform-origin: center center;
+.pos-stage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
 }
 
 .pos {
-  width: 1280px;
-  height: 832px;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   background: var(--bg);
   color: var(--ink);
@@ -99,6 +91,352 @@ button:focus-visible {
   letter-spacing: -0.005em;
   overflow: hidden;
   position: relative;
+}
+
+/* Kolom konten di kanan sidebar: TopBar + isi layar. */
+.pos-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Dua panel berdampingan; lebar kolom lewat --cols (inline). */
+.split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--cols, 1fr 1fr);
+  min-height: 0;
+}
+.split > * {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.split-aside {
+  background: var(--surface);
+  border-left: 1px solid var(--hairline);
+}
+
+/* Bar ringkasan keranjang di layar Menu — hanya muncul di HP/tablet kecil. */
+.cart-bar {
+  display: none;
+}
+
+/* Baris tabel item di layar Review Pesanan. */
+.cart-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 110px 40px;
+  grid-template-areas: 'item price qty sub del';
+  gap: 12px;
+  align-items: center;
+}
+.cart-row > .c-item { grid-area: item; }
+.cart-row > .c-price { grid-area: price; }
+.cart-row > .c-qty { grid-area: qty; }
+.cart-row > .c-sub { grid-area: sub; }
+.cart-row > .c-del { grid-area: del; }
+
+/* Tabel lebar (Laporan, Pengguna) bisa digeser horizontal di layar kecil. */
+.table-scroll {
+  overflow-x: auto;
+}
+.table-scroll > table {
+  min-width: 640px;
+}
+
+/* Sidebar (desktop/tablet: rel kiri) */
+.sidebar {
+  width: 88px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 16px;
+}
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0 12px;
+  margin-top: 28px;
+}
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-top: auto;
+}
+
+.topbar {
+  min-height: 72px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-brand {
+  flex: 1;
+}
+.login-form {
+  width: 520px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.customize {
+  width: min(980px, 100%);
+  height: min(720px, 100%);
+  display: flex;
+}
+.customize-hero {
+  width: 380px;
+  flex-shrink: 0;
+}
+
+/* Isi kolom yang bisa di-scroll tidak boleh ikut menyusut (banner jadi gepeng). */
+.pad > * {
+  flex-shrink: 0;
+}
+
+/* Hanya tampil di HP. */
+.only-mobile {
+  display: none !important;
+}
+
+@media (max-width: 1023px) {
+  .split.split-collapse-md {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  /* Ditumpuk: tiap panel setinggi isinya, satu scroll untuk seluruh halaman. */
+  .split.split-collapse-md {
+    align-content: start;
+  }
+  .split.split-collapse-md > * {
+    overflow: visible !important;
+    min-height: auto;
+  }
+  .split.split-collapse-md > .split-aside {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .topbar {
+    padding: 12px 20px;
+    flex-wrap: wrap;
+  }
+  .topbar-search {
+    display: none !important;
+  }
+  .customize-hero {
+    width: 300px;
+  }
+  .login-form {
+    width: 55%;
+  }
+}
+
+/* Tablet & laptop kecil: tabel item keranjang pakai 2 baris per item. */
+@media (max-width: 1279px) {
+  .cart-head {
+    display: none !important;
+  }
+  .cart-row > .c-price {
+    text-align: left !important;
+  }
+  .cart-row {
+    grid-template-columns: 1fr auto auto 36px;
+    grid-template-areas:
+      'item item item item'
+      'price qty sub del';
+    row-gap: 10px;
+  }
+}
+
+/* Tablet tegak: panel keranjang diganti bar ringkasan di bawah. */
+@media (max-width: 899px) {
+  .cart-panel {
+    display: none !important;
+  }
+  .cart-bar {
+    display: flex;
+  }
+}
+
+/* Layar pendek (HP miring): sidebar ringkas supaya Keluar tetap terlihat. */
+@media (max-height: 520px) and (min-width: 768px) {
+  .sidebar {
+    padding: 8px 0;
+    overflow-y: auto;
+  }
+  .sidebar-logo,
+  .sidebar-item-disabled,
+  .sidebar-role {
+    display: none !important;
+  }
+  .sidebar-nav {
+    margin-top: 0;
+    gap: 2px;
+  }
+  .sidebar-nav > * {
+    padding: 6px 4px !important;
+  }
+  .customize-hero {
+    width: 240px;
+  }
+  .customize-hero-art,
+  .customize-hero-desc {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .pos {
+    flex-direction: column;
+  }
+  .split {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .split {
+    align-content: start;
+  }
+  .split > * {
+    overflow: visible !important;
+    min-height: auto;
+  }
+  .split > .split-aside {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .pad {
+    padding: 16px !important;
+  }
+
+  /* Sidebar → navigasi bawah */
+  .sidebar {
+    order: 2;
+    width: 100%;
+    flex-direction: row;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-right: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .sidebar-logo,
+  .sidebar-item-disabled,
+  .sidebar-role {
+    display: none !important;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    margin-top: 0;
+    padding: 4px 0;
+    gap: 2px;
+    flex: 1;
+    justify-content: space-around;
+  }
+  .sidebar-nav > * {
+    flex: 1;
+    max-width: 96px;
+  }
+  .sidebar-active-bar {
+    display: none;
+  }
+  .sidebar-user {
+    flex-direction: row;
+    margin-top: 0;
+    gap: 6px;
+    padding-right: 4px;
+  }
+  .sidebar-avatar {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 12px !important;
+  }
+  .sidebar-logout {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .topbar {
+    min-height: 0;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .topbar-title {
+    font-size: 18px !important;
+  }
+  .topbar-right {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .topbar-right-hide-mobile {
+    display: none !important;
+  }
+
+  .login-brand {
+    display: none !important;
+  }
+  .login-form {
+    width: 100%;
+    padding: 24px;
+  }
+
+  .modal-backdrop {
+    padding: 0;
+    place-items: end stretch;
+  }
+  .modal-sheet {
+    width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .customize {
+    width: 100%;
+    height: 92dvh;
+    flex-direction: column;
+    border-radius: 20px 20px 0 0 !important;
+  }
+  .customize-hero {
+    width: 100%;
+    padding: 16px 20px !important;
+  }
+  .customize-hero-art,
+  .customize-hero-desc {
+    display: none !important;
+  }
+
+  .only-mobile {
+    display: revert !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  .span-mobile {
+    grid-column: 1 / -1;
+  }
 }
 
 .pos *::-webkit-scrollbar {

@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Icon } from '../components/Icon';
 import { fmtRp } from '../data/menu';
@@ -119,7 +120,7 @@ export function ScreenPayMethod() {
   return (
     <div className="pos">
       <Sidebar active="orders" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Pembayaran"
           subtitle={`Pesanan #${orderNo} · Pilih metode pembayaran`}
@@ -129,8 +130,9 @@ export function ScreenPayMethod() {
             </Btn>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', minHeight: 0 }}>
+        <div className="split split-collapse-md" style={splitCols('1fr 420px')}>
           <div
+            className="pad"
             style={{
               padding: '24px 28px',
               overflow: 'auto',
@@ -147,6 +149,7 @@ export function ScreenPayMethod() {
                 background: 'linear-gradient(120deg, var(--green) 0%, #2c7a47 70%)',
                 color: '#fff',
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: 24,
                 position: 'relative',
@@ -164,7 +167,7 @@ export function ScreenPayMethod() {
                   background: 'rgba(245,197,24,.16)',
                 }}
               />
-              <div style={{ flex: 1, zIndex: 1 }}>
+              <div style={{ flex: '1 1 260px', zIndex: 1 }}>
                 <div
                   style={{ fontSize: 12, opacity: 0.8, letterSpacing: '0.04em', textTransform: 'uppercase' }}
                 >
@@ -174,7 +177,7 @@ export function ScreenPayMethod() {
                   className="tnum"
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 56,
+                    fontSize: 'clamp(32px, 6vw, 56px)',
                     fontWeight: 700,
                     letterSpacing: '-0.03em',
                     lineHeight: 1,
@@ -233,9 +236,8 @@ export function ScreenPayMethod() {
 
           {/* Right keypad — cash quick amounts */}
           <aside
+            className="split-aside pad"
             style={{
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--hairline)',
               padding: '24px 24px',
               display: 'flex',
               flexDirection: 'column',

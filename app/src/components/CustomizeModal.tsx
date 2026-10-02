@@ -16,7 +16,7 @@ type SectProps = {
 function Sect({ label, hint, required, children }: SectProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'baseline', justifyContent: 'space-between' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
           {label}
           {required && (
@@ -69,6 +69,7 @@ function OptCard({ label, sub, price, selected, disabled, onClick }: OptCardProp
         cursor: disabled ? 'not-allowed' : 'pointer',
         textAlign: 'left',
         width: '100%',
+        minWidth: 0,
       }}
     >
       <div
@@ -224,34 +225,24 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
 
   return (
     <div
+      className="modal-backdrop"
       onClick={closeCustomize}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'rgba(17,36,26,0.45)',
-        backdropFilter: 'blur(2px)',
-        display: 'grid',
-        placeItems: 'center',
-        zIndex: 50,
-      }}
+      style={{ background: 'rgba(17,36,26,0.45)', backdropFilter: 'blur(2px)' }}
     >
       <div
+        className="customize"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 980,
-          height: 720,
           background: 'var(--surface)',
           borderRadius: 24,
           boxShadow: 'var(--shadow-lg)',
-          display: 'flex',
           overflow: 'hidden',
         }}
       >
         {/* Hero left */}
         <div
+          className="customize-hero"
           style={{
-            width: 380,
-            flexShrink: 0,
             background: 'linear-gradient(160deg, #efe2b3, #e9c97a)',
             padding: 28,
             display: 'flex',
@@ -275,7 +266,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-2)' }}>SKU MMI-{item.id.toUpperCase()}</div>
           </div>
-          <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
+          <div className="customize-hero-art" style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
             <div
               style={{
                 width: 220,
@@ -308,7 +299,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             >
               {item.name}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>
+            <div className="customize-hero-desc" style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>
               Adonan tradisional Bangka, mentega Wijsman, taburan keju Anchor & cokelat Toblerone leleh.
             </div>
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -339,7 +330,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
         </div>
 
         {/* Form right */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
           <div
             style={{
               padding: '18px 24px',
@@ -369,9 +360,9 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
               <Icon name="close" size={16} />
             </button>
           </div>
-          <div style={{ flex: 1, padding: '20px 24px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+          <div className="pad" style={{ flex: 1, padding: '20px 24px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
             <Sect label="Pilih ukuran" required>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
                 {SIZES.map((s) => (
                   <OptCard
                     key={s.id}
@@ -386,7 +377,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             </Sect>
 
             <Sect label="Topping ekstra" hint={`Maks. 3 pilihan · ${toppingIds.length} dipilih`}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                 {TOPPINGS.map((t) => (
                   <ToppingTile
                     key={t.id}
@@ -403,7 +394,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
             </Sect>
 
             <Sect label="Tingkat kematangan">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
                 {DONENESS.map((d) => (
                   <OptCard
                     key={d.id}
@@ -454,6 +445,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
               padding: '16px 24px',
               borderTop: '1px solid var(--hairline)',
               display: 'flex',
+              flexWrap: 'wrap',
               alignItems: 'center',
               gap: 16,
               background: 'var(--surface-soft)',
@@ -487,7 +479,7 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                 <Icon name="plus" size={16} />
               </button>
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 110 }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Subtotal item</div>
               <div
                 className="tnum"
@@ -496,10 +488,10 @@ export function CustomizeModal({ item }: { item: MenuItem }) {
                 {fmtRp(subtotal)}
               </div>
             </div>
-            <Btn kind="ghost" size="lg" onClick={closeCustomize}>
+            <Btn kind="ghost" size="lg" className="hide-mobile" onClick={closeCustomize}>
               Batal
             </Btn>
-            <Btn kind="primary" size="lg" icon="plus" onClick={handleAdd}>
+            <Btn kind="primary" size="lg" icon="plus" onClick={handleAdd} style={{ flex: '1 0 auto', justifyContent: 'center' }}>
               Tambah ke Pesanan
             </Btn>
           </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
+import { splitCols } from '../components/layout';
 import { Btn } from '../components/Btn';
 import { Field, inputStyle } from '../components/Field';
 import { ApiError, createUser, listUsers, updateUser, type UserRow } from '../services/api';
@@ -65,7 +66,7 @@ export function ScreenUsers() {
   return (
     <div className="pos">
       <Sidebar active="users" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="pos-main">
         <TopBar
           title="Pengguna"
           subtitle="Kelola akun operator & admin"
@@ -75,8 +76,8 @@ export function ScreenUsers() {
             </Btn>
           }
         />
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 380px', minHeight: 0 }}>
-          <div style={{ padding: '24px 28px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="split split-collapse-md" style={splitCols('1fr 380px')}>
+          <div className="pad" style={{ padding: '24px 28px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {notice && (
               <div
                 role="status"
@@ -100,6 +101,7 @@ export function ScreenUsers() {
                 overflow: 'hidden',
               }}
             >
+              <div className="table-scroll">
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: 'var(--ink-3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -170,10 +172,11 @@ export function ScreenUsers() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 
-          <aside style={{ background: 'var(--surface)', borderLeft: '1px solid var(--hairline)', padding: '24px' }}>
+          <aside className="split-aside pad" style={{ padding: 24 }}>
             {panel.mode === 'add' ? (
               <AddUserForm
                 onDone={async (name) => {

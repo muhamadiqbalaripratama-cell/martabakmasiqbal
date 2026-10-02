@@ -36,7 +36,10 @@ export function QRBlock({ size = 280 }: Props) {
     }
   }
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      style={{ display: 'block', width: '100%', maxWidth: size, height: 'auto', aspectRatio: '1' }}
+    >
       <rect width={size} height={size} fill="#fff" />
       {dots}
       <Finder x={0} y={0} />
