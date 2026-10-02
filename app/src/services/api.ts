@@ -228,3 +228,8 @@ export async function setMenuImage(id: string, img: PaymentProof): Promise<MenuI
 export async function deleteMenuImage(id: string): Promise<MenuItem> {
   return toMenuItem(await jsonFetch<MenuRow>(`${BASE}/menu/${encodeURIComponent(id)}/image`, { method: 'DELETE' }));
 }
+
+// Hapus menu permanen dari daftar (riwayat pesanan tetap utuh).
+export async function deleteMenuItem(id: string): Promise<void> {
+  await jsonFetch(`${BASE}/menu/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

@@ -170,7 +170,7 @@ Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker 
 ## Data menu & toko
 
 - **Menu** (30 item: martabak manis, martabak telur, minuman, paket hemat) beserta foto ilustrasi otomatis dimasukkan ke database saat backend pertama kali jalan. Sumbernya `backend/src/seed/menu.ts` dan `backend/assets/menu/*.jpg`.
-- Setelah itu menu dikelola admin dari layar **Kelola Menu**: ubah nama/harga/deskripsi, **upload foto asli**, tandai *habis*, atau sembunyikan menu. Perubahan admin tidak tertimpa saat backend restart. Operator juga bisa menandai menu habis/tersedia lewat API.
+- Setelah itu menu dikelola admin dari layar **Kelola Menu**: **tambah**, **ubah** (nama/harga/deskripsi/foto), **hapus**, tandai *habis*, atau sembunyikan sementara. Menu yang dihapus tetap tercatat di database (`deleted_at`) supaya tidak dimasukkan ulang saat restart; riwayat pesanan & laporan tidak berubah. Perubahan admin tidak tertimpa saat backend restart. Operator juga bisa menandai menu habis/tersedia lewat API.
 - **Kamera untuk bukti bayar**: tombol *Buka Kamera* membuka kamera langsung di aplikasi kalau website diakses lewat **HTTPS** (atau localhost). Lewat HTTP biasa (`http://<ip>:8899`) browser tidak mengizinkan kamera langsung, jadi di HP tombol itu membuka aplikasi kamera bawaan HP; di laptop tanpa HTTPS hanya bisa pilih file.
 - **Perubahan data sekali jalan** (mis. menyembunyikan menu Mini) dicatat di tabel `app_migrations`, jadi tidak diulang saat restart dan tidak menimpa keputusan admin setelahnya.
 - **Pembulatan harga**: diskon & PPN dibulatkan ke Rp100 terdekat, total akhir ke Rp1.000 terdekat; selisihnya tampil sebagai baris *Pembulatan* di ringkasan & struk, dan tersimpan di kolom `orders.rounding`.
@@ -183,7 +183,7 @@ Cek `docker compose logs web`. Pastikan `dist/index.html` ada di image: `docker 
 | Role | Bisa |
 | --- | --- |
 | **Operator** | Login, transaksi kasir (Tunai / QRIS / Transfer BCA + upload bukti) |
-| **Admin** | Semua yang operator bisa, plus **Laporan** (termasuk lihat bukti bayar), **Kelola Menu** (harga, foto, habis/sembunyikan), dan **Pengguna** (tambah akun, reset password, ubah role, nonaktifkan) |
+| **Admin** | Semua yang operator bisa, plus **Laporan** (termasuk lihat bukti bayar), **Kelola Menu** (tambah, ubah harga/foto, hapus, habis/sembunyikan), dan **Pengguna** (tambah akun, reset password, ubah role, nonaktifkan) |
 
 - Sesi login disimpan di cookie `HttpOnly` selama 12 jam (satu shift), lalu harus login ulang.
 - Setelah 5x salah password, username tersebut dikunci 15 menit dari IP yang sama.
@@ -206,6 +206,7 @@ Semua endpoint selain `/api/health` dan `/api/auth/login` butuh login (cookie se
 | PATCH | `/api/menu/:id` | admin* | Ubah menu; `active: false` = sembunyikan. *Operator hanya boleh `sold_out` |
 | PUT | `/api/menu/:id/image` | admin | Upload foto `{ mime, data: <base64> }` (JPG/PNG/WEBP, maks 3 MB) |
 | DELETE | `/api/menu/:id/image` | admin | Hapus foto |
+| DELETE | `/api/menu/:id` | admin | Hapus menu (riwayat pesanan tetap utuh) |
 | POST | `/api/orders` | login | Buat pesanan baru (dicatat atas nama user yang login) |
 | GET | `/api/orders/today/count` | login | Jumlah pesanan hari ini |
 | GET | `/api/orders` | admin | 50 pesanan terbaru; `?date=YYYY-MM-DD` → semua pesanan tanggal itu |

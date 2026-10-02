@@ -13,6 +13,7 @@ import {
   ApiError,
   createMenuItem,
   deleteMenuImage,
+  deleteMenuItem,
   getMenu,
   setMenuImage,
   updateMenuItem,
@@ -90,6 +91,17 @@ export function ScreenMenuAdmin() {
     ...Object.fromEntries(CATEGORY_ORDER.map((c) => [c, all.filter((m) => m.active && m.category === c).length])),
   } as Record<Filter, number>;
 
+  const removeItem = async (m: MenuItem) => {
+    if (!window.confirm(`Hapus menu "${m.name}"?\n\nMenu hilang dari kasir dan Kelola Menu. Riwayat pesanan & laporan tidak berubah.`)) return;
+    try {
+      await deleteMenuItem(m.id);
+      if (selectedId === m.id) setSelectedId(null);
+      await afterChange(`${m.name} dihapus dari menu.`);
+    } catch (e) {
+      setNotice(errorMessage(e));
+    }
+  };
+
   const toggleSoldOut = async (m: MenuItem) => {
     try {
       await updateMenuItem(m.id, { sold_out: !m.soldOut });
@@ -150,10 +162,8 @@ export function ScreenMenuAdmin() {
               {visible.map((m, i) => (
                 <div
                   key={m.id}
-                  role="button"
-                  tabIndex={0}
+                  // Klik baris = pintasan tombol "Ubah" (yang bisa dipakai keyboard).
                   onClick={() => select(m.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && select(m.id)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -202,6 +212,32 @@ export function ScreenMenuAdmin() {
                       {m.soldOut ? 'Tersedia' : 'Habis'}
                     </Btn>
                   )}
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <Btn
+                      kind="soft"
+                      size="sm"
+                      icon="note"
+                      aria-label={`Ubah ${m.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        select(m.id);
+                      }}
+                    >
+                      <span className="hide-mobile">Ubah</span>
+                    </Btn>
+                    <Btn
+                      kind="danger"
+                      size="sm"
+                      icon="trash"
+                      aria-label={`Hapus ${m.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeItem(m);
+                      }}
+                    >
+                      <span className="hide-mobile">Hapus</span>
+                    </Btn>
+                  </div>
                 </div>
               ))}
             </div>
@@ -213,6 +249,7 @@ export function ScreenMenuAdmin() {
               item={selected}
               onSaved={afterChange}
               onCancel={() => select(null)}
+              onDelete={removeItem}
             />
           </aside>
         </div>
@@ -225,9 +262,10 @@ type FormProps = {
   item: MenuItem | null;
   onSaved: (msg: string, id?: string) => Promise<void>;
   onCancel: () => void;
+  onDelete: (m: MenuItem) => Promise<void>;
 };
 
-function MenuForm({ item, onSaved, onCancel }: FormProps) {
+function MenuForm({ item, onSaved, onCancel, onDelete }: FormProps) {
   const [category, setCategory] = useState<MenuCategory>(item?.category ?? 'manis');
   const [name, setName] = useState(item?.name ?? '');
   const [price, setPrice] = useState(item ? String(item.price) : '');
@@ -420,12 +458,23 @@ function MenuForm({ item, onSaved, onCancel }: FormProps) {
           </Btn>
           <Btn
             type="button"
-            kind={item.active ? 'danger' : 'soft'}
+            kind={item.active ? 'ghost' : 'soft'}
             onClick={() => setActive(!item.active)}
             style={{ flex: 1, justifyContent: 'center' }}
           >
             {item.active ? 'Sembunyikan' : 'Tampilkan lagi'}
           </Btn>
+        </div>
+      )}
+      {item && (
+        <Btn type="button" kind="danger" icon="trash" onClick={() => onDelete(item)} style={{ justifyContent: 'center' }}>
+          Hapus Menu
+        </Btn>
+      )}
+      {item && (
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
+          <b>Sembunyikan</b> = sementara tidak dijual, bisa ditampilkan lagi. <b>Hapus</b> = dibuang dari daftar menu. Riwayat
+          pesanan & laporan tidak berubah.
         </div>
       )}
     </form>

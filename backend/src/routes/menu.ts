@@ -24,12 +24,16 @@ const SELECT = `
          IF(image_data IS NULL, NULL, UNIX_TIMESTAMP(image_updated_at)) AS image_version
     FROM menu_items`;
 
+// Menu yang dihapus admin tetap ada barisnya (deleted_at terisi) supaya
+// tidak dimasukkan ulang oleh seed saat restart; semua query menyaringnya.
+const NOT_DELETED = 'deleted_at IS NULL';
+
 // ?all=1 (admin) ikut menampilkan item nonaktif.
 menuRouter.get('/', async (req, res) => {
   const all = req.query.all === '1' && isAdmin(res);
   try {
     const [rows] = await pool.query(
-      `${SELECT} ${all ? '' : 'WHERE active = 1'}
+      `${SELECT} WHERE ${NOT_DELETED} ${all ? '' : 'AND active = 1'}
        ORDER BY FIELD(category, 'manis', 'asin', 'drink', 'paket'), sort_order, name`,
     );
     res.json(rows);
@@ -42,7 +46,7 @@ menuRouter.get('/', async (req, res) => {
 menuRouter.get('/:id/image', async (req, res) => {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT image_mime, image_data FROM menu_items WHERE id = ? AND image_data IS NOT NULL',
+      `SELECT image_mime, image_data FROM menu_items WHERE id = ? AND image_data IS NOT NULL AND ${NOT_DELETED}`,
       [req.params.id],
     );
     if (!rows[0]) return res.status(404).json({ error: 'not_found' });
@@ -112,7 +116,7 @@ function validate(b: MenuInput, creating: boolean): { cols: string[]; vals: unkn
 }
 
 async function getItem(id: string) {
-  const [rows] = await pool.query<RowDataPacket[]>(`${SELECT} WHERE id = ?`, [id]);
+  const [rows] = await pool.query<RowDataPacket[]>(`${SELECT} WHERE id = ? AND ${NOT_DELETED}`, [id]);
   return rows[0];
 }
 
@@ -154,7 +158,7 @@ menuRouter.patch('/:id', async (req, res) => {
   if (v.cols.length === 0) return res.status(400).json({ error: 'nothing_to_update' });
   try {
     const [r] = await pool.query<ResultSetHeader>(
-      `UPDATE menu_items SET ${v.cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
+      `UPDATE menu_items SET ${v.cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND ${NOT_DELETED}`,
       [...v.vals, req.params.id],
     );
     if (r.affectedRows === 0) return res.status(404).json({ error: 'not_found' });
@@ -171,7 +175,7 @@ menuRouter.put('/:id/image', async (req, res) => {
   if (typeof img === 'string') return res.status(400).json({ error: `image_${img}` });
   try {
     const [r] = await pool.query<ResultSetHeader>(
-      'UPDATE menu_items SET image_mime = ?, image_data = ?, image_updated_at = NOW() WHERE id = ?',
+      `UPDATE menu_items SET image_mime = ?, image_data = ?, image_updated_at = NOW() WHERE id = ? AND ${NOT_DELETED}`,
       [img.mime, img.data, req.params.id],
     );
     if (r.affectedRows === 0) return res.status(404).json({ error: 'not_found' });
@@ -187,13 +191,32 @@ menuRouter.delete('/:id/image', async (req, res) => {
   try {
     // image_updated_at tetap diisi supaya foto bawaan tidak dipasang ulang.
     const [r] = await pool.query<ResultSetHeader>(
-      'UPDATE menu_items SET image_mime = NULL, image_data = NULL, image_updated_at = NOW() WHERE id = ?',
+      `UPDATE menu_items SET image_mime = NULL, image_data = NULL, image_updated_at = NOW() WHERE id = ? AND ${NOT_DELETED}`,
       [req.params.id],
     );
     if (r.affectedRows === 0) return res.status(404).json({ error: 'not_found' });
     res.json(await getItem(req.params.id));
   } catch (e) {
     console.error('[menu.image.delete]', e);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// Hapus menu (admin). Riwayat pesanan tidak terpengaruh: order_lines
+// menyimpan nama & harga sendiri. Foto dibuang untuk menghemat ruang.
+menuRouter.delete('/:id', async (req, res) => {
+  if (!isAdmin(res)) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const [r] = await pool.query<ResultSetHeader>(
+      `UPDATE menu_items
+          SET deleted_at = NOW(), active = 0, image_mime = NULL, image_data = NULL
+        WHERE id = ? AND ${NOT_DELETED}`,
+      [req.params.id],
+    );
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[menu.delete]', e);
     res.status(500).json({ error: 'failed' });
   }
 });

@@ -25,7 +25,7 @@ export async function seedMenu(): Promise<void> {
     await pool.query('UPDATE menu_items SET sort_order = ? WHERE id = ? AND sort_order = 0', [i + 1, m.id]);
 
     await pool.query(
-      `UPDATE menu_items SET description = ? WHERE id = ? AND (description IS NULL OR description = '')`,
+      `UPDATE menu_items SET description = ? WHERE id = ? AND deleted_at IS NULL AND (description IS NULL OR description = '')`,
       [m.description, m.id],
     );
 
@@ -36,7 +36,7 @@ export async function seedMenu(): Promise<void> {
     if (existsSync(file)) {
       const [u] = await pool.query<ResultSetHeader>(
         `UPDATE menu_items SET image_mime = 'image/jpeg', image_data = ?, image_updated_at = NOW()
-          WHERE id = ? AND image_data IS NULL AND image_updated_at IS NULL`,
+          WHERE id = ? AND deleted_at IS NULL AND image_data IS NULL AND image_updated_at IS NULL`,
         [readFileSync(file), m.id],
       );
       images += u.affectedRows;

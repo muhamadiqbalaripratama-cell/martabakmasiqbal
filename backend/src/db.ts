@@ -100,6 +100,8 @@ export async function ensureSchema(): Promise<void> {
     ['image_updated_at', 'TIMESTAMP NULL DEFAULT NULL'],
     ['active', 'TINYINT(1) NOT NULL DEFAULT 1'],
     ['sort_order', 'INT NOT NULL DEFAULT 0'],
+    // Diisi saat admin menghapus menu (lihat routes/menu.ts).
+    ['deleted_at', 'TIMESTAMP NULL DEFAULT NULL'],
   ];
   for (const [col, ddl] of menuCols) {
     if (!(await hasColumn('menu_items', col))) await pool.query(`ALTER TABLE menu_items ADD COLUMN ${col} ${ddl}`);
