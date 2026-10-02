@@ -325,7 +325,7 @@ export function ScreenPayMethod() {
               kind="primary"
               size="lg"
               onClick={handleConfirm}
-              style={{ width: '100%', justifyContent: 'space-between' }}
+              style={{ width: '100%', justifyContent: 'center' }}
             >
               {ctaLabel}
               <Icon name="chev-r" size={18} />

@@ -281,7 +281,7 @@ export function ScreenCash() {
               style={{
                 width: '100%',
                 height: 64,
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 fontSize: 16,
                 opacity: canPay ? 1 : 0.55,
                 cursor: canPay ? 'pointer' : 'not-allowed',

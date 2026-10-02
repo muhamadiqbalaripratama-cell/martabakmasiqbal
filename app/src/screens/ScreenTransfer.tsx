@@ -199,7 +199,7 @@ export function ScreenTransfer() {
               onClick={handleConfirm}
               style={{
                 width: '100%',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 opacity: canConfirm ? 1 : 0.55,
                 cursor: canConfirm ? 'pointer' : 'not-allowed',
               }}

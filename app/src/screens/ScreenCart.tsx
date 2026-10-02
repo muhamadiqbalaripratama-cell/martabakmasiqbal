@@ -264,7 +264,7 @@ export function ScreenCart() {
                 onClick={() => goto('pay-method')}
                 style={{
                   width: '100%',
-                  justifyContent: 'space-between',
+                  justifyContent: 'center',
                   opacity: lines.length === 0 ? 0.55 : 1,
                   cursor: lines.length === 0 ? 'not-allowed' : 'pointer',
                 }}
