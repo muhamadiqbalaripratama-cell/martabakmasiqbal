@@ -42,9 +42,8 @@ const SIZES_MANIS: OptionGroup = {
   kind: 'single',
   defaults: ['reguler'],
   options: [
-    { id: 'mini', label: 'Mini', sub: '20 cm · 8 potong', price: 0 },
-    { id: 'reguler', label: 'Reguler', sub: '24 cm · 12 potong', price: 7000 },
-    { id: 'jumbo', label: 'Jumbo', sub: '28 cm · 16 potong', price: 18000 },
+    { id: 'reguler', label: 'Reguler', sub: '24 cm · 12 potong', price: 0 },
+    { id: 'jumbo', label: 'Jumbo', sub: '28 cm · 16 potong', price: 11000 },
   ],
 };
 

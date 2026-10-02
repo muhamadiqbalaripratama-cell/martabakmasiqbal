@@ -106,6 +106,40 @@ export async function ensureSchema(): Promise<void> {
   }
 }
 
+// Perubahan data yang cukup dijalankan SEKALI (tercatat di tabel
+// app_migrations), supaya keputusan admin setelahnya tidak ditimpa saat
+// backend restart.
+const DATA_MIGRATIONS: { id: string; run: () => Promise<unknown> }[] = [
+  {
+    // Varian "Mini" dihentikan: sembunyikan menunya dan perbarui isi
+    // Paket Hemat Solo (kalau deskripsinya belum diubah admin).
+    id: '2026-10-hapus-mini',
+    run: async () => {
+      await pool.query(`UPDATE menu_items SET active = 0 WHERE id IN ('m6', 'a4')`);
+      await pool.query(
+        `UPDATE menu_items SET description = '1 Martabak Manis Kacang Cokelat + 1 Es Teh Manis.'
+          WHERE id = 'p3' AND description = '1 Martabak Manis Mini (12 pcs) + 1 Es Teh Manis.'`,
+      );
+    },
+  },
+];
+
+export async function runDataMigrations(): Promise<void> {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      id          VARCHAR(64) NOT NULL PRIMARY KEY,
+      applied_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  for (const m of DATA_MIGRATIONS) {
+    const [done] = await pool.query<RowDataPacket[]>('SELECT 1 FROM app_migrations WHERE id = ?', [m.id]);
+    if (done.length) continue;
+    await m.run();
+    await pool.query('INSERT INTO app_migrations (id) VALUES (?)', [m.id]);
+    console.log(`[db] migrasi data: ${m.id}`);
+  }
+}
+
 // MySQL 8.0 belum mendukung ADD COLUMN IF NOT EXISTS → cek manual.
 async function hasColumn(table: string, column: string): Promise<boolean> {
   const [rows] = await pool.query<RowDataPacket[]>(

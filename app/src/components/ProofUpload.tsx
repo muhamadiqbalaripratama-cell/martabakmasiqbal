@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Btn } from './Btn';
 import { Icon } from './Icon';
+import { CameraCapture, canUseLiveCamera } from './CameraCapture';
 import { compressProofImage } from '../data/payment';
 import type { PaymentProof } from '../types';
 
@@ -10,13 +11,23 @@ type Props = {
   label?: string;
 };
 
-// Kotak upload bukti pembayaran (klik / drag & drop) + pratinjau.
+// Kotak upload bukti pembayaran (kamera / pilih file / drag & drop) + pratinjau.
 // Dipakai di layar QRIS dan Transfer BCA.
 export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran' }: Props) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+
+  // HTTPS/localhost: kamera langsung di aplikasi. HTTP biasa: browser tidak
+  // mengizinkan itu, jadi pakai input capture → membuka aplikasi kamera HP.
+  const openCamera = () => {
+    setError(null);
+    if (canUseLiveCamera()) setCameraOpen(true);
+    else cameraInput.current?.click();
+  };
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -43,6 +54,26 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
           e.target.value = '';
         }}
       />
+      <input
+        ref={cameraInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          handleFile(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+      {cameraOpen && (
+        <CameraCapture
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            setCameraOpen(false);
+            handleFile(file);
+          }}
+        />
+      )}
 
       {proof ? (
         <div
@@ -68,9 +99,9 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
               border: '1px solid var(--hairline)',
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="check" size={16} color="var(--green)" stroke={2.4} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: '1 1 160px', minWidth: 0 }}>
               <div
                 style={{
                   fontSize: 12,
@@ -86,15 +117,17 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
                 {Math.max(1, Math.round(proof.sizeBytes / 1024))} KB · siap disimpan
               </div>
             </div>
+            <Btn kind="ghost" size="sm" icon="camera" onClick={openCamera}>
+              Foto ulang
+            </Btn>
             <Btn kind="ghost" size="sm" onClick={() => fileInput.current?.click()}>
-              Ganti
+              Ganti file
             </Btn>
             <Btn kind="danger" size="sm" icon="trash" onClick={() => onChange(null)} aria-label="Hapus bukti" />
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => fileInput.current?.click()}
+        <div
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -105,9 +138,9 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
             setDragOver(false);
             handleFile(e.dataTransfer.files?.[0]);
           }}
-          disabled={processing}
           style={{
-            height: 280,
+            minHeight: 280,
+            padding: 20,
             borderRadius: 16,
             border: `2px dashed ${dragOver ? 'var(--green)' : 'var(--hairline-2)'}`,
             background: dragOver ? 'var(--green-tint)' : 'var(--surface-soft)',
@@ -115,10 +148,9 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 10,
-            cursor: processing ? 'wait' : 'pointer',
+            gap: 12,
             color: 'var(--ink-2)',
-            font: 'inherit',
+            textAlign: 'center',
           }}
         >
           <div
@@ -134,13 +166,17 @@ export function ProofUpload({ proof, onChange, label = 'Upload Bukti Pembayaran'
           >
             <Icon name="upload" size={24} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>
-            {processing ? 'Memproses gambar…' : label}
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{processing ? 'Memproses gambar…' : label}</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Btn kind="primary" icon="camera" onClick={openCamera} disabled={processing}>
+              Buka Kamera
+            </Btn>
+            <Btn kind="ghost" icon="image" onClick={() => fileInput.current?.click()} disabled={processing}>
+              Pilih File
+            </Btn>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            Klik atau seret gambar ke sini · JPG, PNG, WEBP
-          </div>
-        </button>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>atau seret gambar ke sini · JPG, PNG, WEBP</div>
+        </div>
       )}
 
       {error && (
