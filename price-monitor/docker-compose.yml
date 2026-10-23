@@ -1,0 +1,78 @@
+# Pantau Harga — Emas, BTC, ETH, Hyperliquid & crypto lain + notifikasi WhatsApp.
+# Port yang dipakai di host:
+#   8650  → website (nginx)
+#   3356  → MySQL, hanya dari VPS itu sendiri (127.0.0.1), untuk DBeaver via SSH tunnel
+name: price-monitor
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pm-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-price_monitor}
+      MYSQL_USER: ${MYSQL_USER:-monitor}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-monitorpass}
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3356}:3306"
+    volumes:
+      - pm-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - pm-net
+
+  api:
+    build:
+      context: ./backend
+    image: price-monitor-api:latest
+    pull_policy: build
+    container_name: pm-api
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-monitor}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-monitorpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-price_monitor}
+      PORT: 3000
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PRICE_INTERVAL_SEC: ${PRICE_INTERVAL_SEC:-60}
+      HISTORY_DAYS: ${HISTORY_DAYS:-90}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      FONNTE_TOKEN: ${FONNTE_TOKEN:-}
+      TZ: Asia/Jakarta
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - pm-net
+
+  web:
+    build:
+      context: ./web
+    image: price-monitor-web:latest
+    pull_policy: build
+    container_name: pm-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8650}:80"
+    depends_on:
+      - api
+    networks:
+      - pm-net
+
+networks:
+  pm-net:
+    driver: bridge
+
+volumes:
+  pm-mysql-data:
+    driver: local
