@@ -108,7 +108,9 @@ Token juga bisa diisi lewat `FONNTE_TOKEN` di `.env`. Token yang disimpan dari m
 - Setiap kali harga baru masuk, semua target aktif dicek.
 - **Sekali saja**: saat kondisi terpenuhi, WA dikirim lalu target otomatis **nonaktif**. Aktifkan lagi dengan tombol switch kalau perlu.
 - **Berulang**: WA dikirim saat kondisi terpenuhi. WA berikutnya baru dikirim setelah harga **keluar dari kondisi lalu masuk lagi** (misalnya turun di bawah target lalu naik lagi), dan minimal setelah *jeda* (menit) yang diatur. Jadi tidak ada spam tiap menit selama harga tetap di atas target.
-- Kalau target dibuat saat kondisinya **sudah** terpenuhi, WA langsung terkirim pada pengecekan berikutnya.
+- Semua target dicek setiap **20 detik**, termasuk "Harga turun sampai ≤". Angka "24 jam" hanya dipakai pada kondisi persentase: harga sekarang dibandingkan dengan harga 24 jam lalu.
+- Kalau target dibuat, diubah, atau diaktifkan lagi saat kondisinya **sudah** terpenuhi (misalnya target "turun sampai ≤ $115.000" padahal harga sekarang $110.000), WA **tidak** langsung dikirim. WA baru dikirim setelah harga keluar dari kondisi lalu menyentuh target lagi. Form target menampilkan peringatan untuk kasus ini.
+- Angka target boleh diketik dalam format Indonesia maupun internasional (`100.000`, `100,000`, `45,5`, `45.5`). Di bawah kolom target ditampilkan angka yang benar-benar akan disimpan.
 - Harga yang tidak berhasil diperbarui lebih dari 15 menit tidak dipakai untuk mengirim notifikasi.
 
 Contoh pesan:

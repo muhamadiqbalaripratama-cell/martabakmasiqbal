@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { changePassword, login, logout, me, requireAdmin } from './auth';
 import { getSetting, pool, setSetting } from './db';
-import { activePhones, logNotification, monitorState, runOnce, type AlertKind } from './monitor';
+import { activePhones, conditionMet, logNotification, monitorState, runOnce, type AlertKind } from './monitor';
 import { chooseFeed, FeedError, saveFeed, type FeedMode } from './feeds';
 import { fetchCoinGecko, searchCoins } from './prices';
 import { getFonnteToken, normalizePhone, sendWhatsApp } from './whatsapp';
@@ -219,6 +219,18 @@ function parseAlert(body: Record<string, unknown>) {
   return { assetId, kind, target, repeat, cooldown, note };
 }
 
+// Kalau kondisi SUDAH terpenuhi saat target dibuat/diubah/diaktifkan, jangan langsung
+// kirim WA: tunggu harga keluar dari kondisi lalu menyentuh target lagi (armed = 0).
+async function startArmed(assetId: number, kind: AlertKind, target: number): Promise<0 | 1> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT price, change_24h FROM assets
+      WHERE id = ? AND price IS NOT NULL AND price_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 15 MINUTE)`,
+    [assetId],
+  );
+  const a = rows[0];
+  return a && conditionMet(kind, target, a.price, a.change_24h) ? 0 : 1;
+}
+
 adminRouter.get(
   '/alerts',
   h(async (_req, res) => {
@@ -238,11 +250,12 @@ adminRouter.post(
   h(async (req, res) => {
     const a = parseAlert(req.body ?? {});
     if (!a) return res.status(400).json({ error: 'invalid_input' });
+    const armed = await startArmed(a.assetId, a.kind, a.target);
     const [r] = await pool.query<ResultSetHeader>(
-      'INSERT INTO alerts (asset_id, kind, target, repeat_mode, cooldown_min, note) VALUES (?, ?, ?, ?, ?, ?)',
-      [a.assetId, a.kind, a.target, a.repeat, a.cooldown, a.note],
+      'INSERT INTO alerts (asset_id, kind, target, repeat_mode, cooldown_min, note, armed) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [a.assetId, a.kind, a.target, a.repeat, a.cooldown, a.note, armed],
     );
-    res.json({ id: r.insertId });
+    res.json({ id: r.insertId, already_met: armed === 0 });
   }),
 );
 
@@ -253,13 +266,14 @@ adminRouter.put(
     const a = parseAlert(req.body ?? {});
     if (!id || !a) return res.status(400).json({ error: 'invalid_input' });
     const active = req.body?.active === false ? 0 : 1;
-    // Target diubah → mulai dari awal (siap kirim lagi).
+    // Target diubah → mulai dari awal.
+    const armed = await startArmed(a.assetId, a.kind, a.target);
     await pool.query(
       `UPDATE alerts SET asset_id = ?, kind = ?, target = ?, repeat_mode = ?, cooldown_min = ?, note = ?,
-              active = ?, armed = 1, last_triggered_at = NULL WHERE id = ?`,
-      [a.assetId, a.kind, a.target, a.repeat, a.cooldown, a.note, active, id],
+              active = ?, armed = ?, last_triggered_at = NULL WHERE id = ?`,
+      [a.assetId, a.kind, a.target, a.repeat, a.cooldown, a.note, active, armed, id],
     );
-    res.json({ ok: true });
+    res.json({ ok: true, already_met: armed === 0 });
   }),
 );
 
@@ -268,14 +282,16 @@ adminRouter.patch(
   h(async (req, res) => {
     const id = toId(req.params.id);
     if (!id || typeof req.body?.active !== 'boolean') return res.status(400).json({ error: 'invalid_input' });
-    // Diaktifkan lagi → siap kirim lagi.
-    await pool.query(
-      req.body.active
-        ? 'UPDATE alerts SET active = 1, armed = 1, last_triggered_at = NULL WHERE id = ?'
-        : 'UPDATE alerts SET active = 0 WHERE id = ?',
-      [id],
-    );
-    res.json({ ok: true });
+    if (!req.body.active) {
+      await pool.query('UPDATE alerts SET active = 0 WHERE id = ?', [id]);
+      return res.json({ ok: true });
+    }
+    // Diaktifkan lagi → mulai dari awal.
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT asset_id, kind, target FROM alerts WHERE id = ?', [id]);
+    if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+    const armed = await startArmed(rows[0].asset_id, rows[0].kind, rows[0].target);
+    await pool.query('UPDATE alerts SET active = 1, armed = ?, last_triggered_at = NULL WHERE id = ?', [armed, id]);
+    res.json({ ok: true, already_met: armed === 0 });
   }),
 );
 

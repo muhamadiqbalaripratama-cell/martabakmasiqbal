@@ -45,11 +45,35 @@ export function ago(iso: string | null | undefined): string {
 }
 
 export const KIND_LABEL: Record<AlertKind, string> = {
-  above: 'Harga naik ke ≥',
-  below: 'Harga turun ke ≤',
-  pct_up: 'Naik 24 jam ≥',
-  pct_down: 'Turun 24 jam ≥',
+  above: 'Harga naik sampai ≥',
+  below: 'Harga turun sampai ≤',
+  pct_up: 'Naik dibanding 24 jam lalu ≥',
+  pct_down: 'Turun dibanding 24 jam lalu ≥',
 };
+
+// Baca angka yang diketik admin, format Indonesia maupun internasional:
+//   "100000", "100.000", "100,000", "45,5", "45.5", "4.150,25", "4,150.25", "0,00001234"
+// Pemisah yang muncul terakhir dianggap desimal kalau dua jenis dipakai. Kalau hanya satu jenis:
+// muncul lebih dari sekali, atau diikuti tepat 3 angka (dan bagian depannya bukan 0) → pemisah ribuan.
+export function parseNumber(raw: string): number | null {
+  let s = raw.replace(/[\s$]/g, '');
+  if (!s || !/^[0-9.,]+$/.test(s)) return null;
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+  if (lastDot >= 0 && lastComma >= 0) {
+    const dec = lastDot > lastComma ? '.' : ',';
+    const thou = dec === '.' ? ',' : '.';
+    s = s.split(thou).join('').replace(dec, '.');
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const sep = lastDot >= 0 ? '.' : ',';
+    const parts = s.split(sep);
+    const thousands = parts.length > 2 || (parts[1].length === 3 && parts[0] !== '0' && parts[0] !== '');
+    s = thousands ? parts.join('') : parts.join('.');
+  }
+  if ((s.match(/\./g) ?? []).length > 1) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 
 export function describe(kind: AlertKind, target: number): string {
   return kind === 'above' || kind === 'below' ? `${KIND_LABEL[kind]} ${usd(target)}` : `${KIND_LABEL[kind]} ${target}%`;

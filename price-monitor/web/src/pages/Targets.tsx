@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError, errorText, type Alert, type AlertKind, type Asset } from '../api';
 import { Switch } from '../components/ui';
-import { describe, pct, usd, wib } from '../format';
+import { describe, parseNumber, pct, usd, wib } from '../format';
 
 type Form = {
   id: number | null;
@@ -19,6 +19,7 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [form, setForm] = useState<Form>(EMPTY);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const fail = (e: unknown) => {
@@ -38,24 +39,45 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
 
   const selected = assets.find((a) => String(a.id) === form.asset_id);
   const isPrice = form.kind === 'above' || form.kind === 'below';
+  const targetNum = parseNumber(form.target);
+
+  // Sama dengan pengecekan di server (monitor.ts → conditionMet).
+  const alreadyMet =
+    !!selected &&
+    targetNum !== null &&
+    selected.price !== null &&
+    (form.kind === 'above'
+      ? selected.price >= targetNum
+      : form.kind === 'below'
+        ? selected.price <= targetNum
+        : form.kind === 'pct_up'
+          ? selected.change_24h !== null && selected.change_24h >= targetNum
+          : selected.change_24h !== null && selected.change_24h <= -targetNum);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setInfo(null);
     const body = {
       asset_id: Number(form.asset_id),
       kind: form.kind,
-      target: Number(form.target.replace(/,/g, '')),
+      target: targetNum ?? NaN,
       repeat_mode: form.repeat_mode,
       cooldown_min: Number(form.cooldown_min || 0),
       note: form.note,
     };
     if (!body.asset_id) return setErr('Pilih aset dulu.');
-    if (!(body.target > 0)) return setErr('Isi target dengan angka lebih dari 0.');
+    if (!(body.target > 0)) return setErr('Isi target dengan angka lebih dari 0 (contoh: 100000 atau 45,5).');
     setBusy(true);
     try {
-      if (form.id) await api(`/admin/alerts/${form.id}`, { method: 'PUT', body });
-      else await api('/admin/alerts', { method: 'POST', body });
+      const r = form.id
+        ? await api<{ already_met?: boolean }>(`/admin/alerts/${form.id}`, { method: 'PUT', body })
+        : await api<{ already_met?: boolean }>('/admin/alerts', { method: 'POST', body });
+      setInfo(
+        r.already_met
+          ? 'Target disimpan. Kondisinya sudah terpenuhi sekarang, jadi WA belum dikirim. WA dikirim nanti saat harga keluar dari kondisi lalu menyentuh target lagi.'
+          : 'Target disimpan. Harga dicek setiap 20 detik.',
+      );
       setForm(EMPTY);
       await load();
     } catch (e) {
@@ -67,6 +89,7 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
 
   const toggle = (a: Alert, active: boolean) =>
     api(`/admin/alerts/${a.id}`, { method: 'PATCH', body: { active } }).then(load).catch(fail);
+
   const remove = (a: Alert) =>
     confirm(`Hapus target ${a.symbol} — ${describe(a.kind, a.target)}?`) &&
     api(`/admin/alerts/${a.id}`, { method: 'DELETE' }).then(load).catch(fail);
@@ -88,6 +111,7 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
       <form className="card card-pad stack" onSubmit={submit}>
         <h2 style={{ margin: 0 }}>{form.id ? 'Ubah Target' : 'Tambah Target'}</h2>
         {err && <div className="error-box">{err}</div>}
+        {info && <div className="ok-box">{info}</div>}
         <div className="form-grid">
           <div className="field">
             <label>Aset</label>
@@ -101,15 +125,20 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
           <div className="field">
             <label>Kondisi</label>
             <select className="input" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as AlertKind })}>
-              <option value="above">Harga naik ke ≥ (USD)</option>
-              <option value="below">Harga turun ke ≤ (USD)</option>
-              <option value="pct_up">Naik dalam 24 jam ≥ (%)</option>
-              <option value="pct_down">Turun dalam 24 jam ≥ (%)</option>
+              <option value="above">Harga naik sampai ≥ (USD)</option>
+              <option value="below">Harga turun sampai ≤ (USD)</option>
+              <option value="pct_up">Naik ≥ X% dibanding 24 jam lalu</option>
+              <option value="pct_down">Turun ≥ X% dibanding 24 jam lalu</option>
             </select>
           </div>
           <div className="field">
             <label>{isPrice ? 'Target harga (USD)' : 'Persentase (%)'}</label>
-            <input className="input num" inputMode="decimal" placeholder={isPrice ? 'mis. 120000' : 'mis. 5'} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+            <input className="input num" inputMode="decimal" placeholder={isPrice ? 'mis. 100000 atau 45,5' : 'mis. 5'} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+            {form.target.trim() !== '' && (
+              <span className="hint" style={{ color: targetNum === null ? 'var(--down)' : undefined }}>
+                {targetNum === null ? 'Angka tidak valid' : <>Tersimpan sebagai <b className="num">{isPrice ? usd(targetNum) : `${targetNum}%`}</b></>}
+              </span>
+            )}
           </div>
           <div className="field">
             <label>Pengiriman</label>
@@ -131,10 +160,19 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
         </div>
         {selected && (
           <div className="hint">
-            Harga {selected.symbol} sekarang <b className="num">{usd(selected.price)}</b> · 24 jam {pct(selected.change_24h)}
+            Harga {selected.symbol} sekarang <b className="num">{usd(selected.price)}</b> · dibanding 24 jam lalu {pct(selected.change_24h)}
+          </div>
+        )}
+        {alreadyMet && (
+          <div className="warn-box small">
+            Perhatian: kondisi ini <b>sudah terpenuhi</b> dengan harga sekarang. WA tidak langsung dikirim. WA baru dikirim setelah harga
+            keluar dari kondisi lalu menyentuh target lagi. Periksa lagi angka dan jenis kondisinya (naik/turun).
           </div>
         )}
         <div className="hint">
+          {isPrice
+            ? 'Harga dicek setiap 20 detik. WA dikirim begitu harga menyentuh target.'
+            : 'Dicek setiap 20 detik: persentase dihitung dari harga sekarang dibanding harga 24 jam lalu.'}{' '}
           {form.repeat_mode === 'once'
             ? 'WA dikirim sekali saat kondisi terpenuhi, lalu target otomatis nonaktif.'
             : 'WA dikirim saat kondisi terpenuhi. Akan dikirim lagi setelah harga sempat keluar dari kondisi lalu masuk lagi, dan minimal setelah jeda di atas.'}
@@ -160,7 +198,11 @@ export function Targets({ onExpired }: { onExpired: () => void }) {
                   <div>
                     <b>{a.symbol}</b> — {describe(a.kind, a.target)}{' '}
                     <span className={`badge ${a.repeat_mode === 'repeat' ? 'gold' : ''}`}>{a.repeat_mode === 'repeat' ? `berulang · ${a.cooldown_min} mnt` : 'sekali'}</span>
-                    {!!a.active && !a.armed && <span className="badge" style={{ marginLeft: 4 }}>menunggu harga keluar kondisi</span>}
+                    {!!a.active && !a.armed && (
+                      <span className="badge" style={{ marginLeft: 4 }} title="Kondisi sedang terpenuhi. WA dikirim lagi setelah harga keluar dari kondisi lalu menyentuh target lagi.">
+                        sudah lewat target · menunggu
+                      </span>
+                    )}
                   </div>
                   <div className="muted small">
                     Sekarang <span className="num">{usd(a.price)}</span> ({pct(a.change_24h)}) · terkirim {a.trigger_count}×
