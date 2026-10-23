@@ -137,6 +137,27 @@ Tabel database dibuat dan diperbarui otomatis saat API start. Data tidak hilang.
 
 Upload manual (zip + SCP): ekstrak zip baru di atas folder lama dengan `unzip -o price-monitor.zip`. File `.env` Anda tidak tertimpa karena tidak ada di dalam zip. Setelah itu jalankan `docker compose up -d --build`.
 
+## Ukuran database
+
+Ukurannya stabil dan tidak terus membesar, karena riwayat harga lama dihapus otomatis.
+
+| Bagian | Ukuran |
+|---|---|
+| MySQL kosong (file sistem bawaan) | ± 200 MB |
+| Riwayat harga: 1 data per koin per menit, disimpan 90 hari | ± 6,5 MB per koin (10 koin ≈ 65 MB) |
+| Target, penerima, riwayat notifikasi (dihapus setelah 1 tahun) | < 1 MB |
+| **Total untuk 10 koin** | **± 270 MB** |
+
+Mau lebih kecil? Kurangi `HISTORY_DAYS` di `.env`. Misalnya `30` membuat riwayat harga sekitar 3x lebih kecil, tapi grafik 90 hari jadi hanya berisi 30 hari.
+
+Binary log MySQL sengaja dimatikan (`--skip-log-bin` di `docker-compose.yml`). Kalau tetap menyala, isinya bisa sekitar 1,2 GB per 30 hari karena harga diperbarui tiap 20 detik. Binary log hanya diperlukan untuk replikasi database, yang tidak dipakai di sini.
+
+Cek ukuran sebenarnya di VPS:
+
+```bash
+docker system df -v | grep pm-mysql-data
+```
+
 ## Akses database (DBeaver)
 
 MySQL hanya terbuka di `127.0.0.1:3356` VPS. Dari laptop, pakai SSH tunnel:

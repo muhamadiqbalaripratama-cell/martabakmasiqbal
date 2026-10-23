@@ -12,6 +12,9 @@ services:
     image: mysql:8.0
     container_name: pm-mysql
     restart: unless-stopped
+    # Matikan binary log: hanya untuk replikasi (tidak dipakai di sini), dan dengan
+    # harga diperbarui tiap 20 detik isinya bisa ±1 GB per 30 hari.
+    command: ["--skip-log-bin"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-price_monitor}
