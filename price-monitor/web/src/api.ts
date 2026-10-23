@@ -55,8 +55,13 @@ export type Asset = {
   price: number | null;
   change_24h: number | null;
   price_at: string | null;
+  last_feed?: string | null;
   active?: number;
   active_alerts?: number;
+  feed_mode?: 'auto' | 'binance' | 'hyperliquid' | 'coingecko';
+  feed?: 'binance' | 'hyperliquid' | 'coingecko' | null;
+  binance_symbol?: string | null;
+  hl_coin?: string | null;
 };
 
 export type AlertKind = 'above' | 'below' | 'pct_up' | 'pct_down';

@@ -69,6 +69,19 @@ export async function ensureSchema(): Promise<void> {
       created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY uniq_source (source, source_id)
     ) ${TABLE_OPTS}`);
+  // Sumber harga per aset crypto (lihat feeds.ts).
+  const assetCols: [string, string][] = [
+    ['feed_mode', "ENUM('auto', 'binance', 'hyperliquid', 'coingecko') NOT NULL DEFAULT 'auto'"],
+    ['feed', "ENUM('binance', 'hyperliquid', 'coingecko') NULL"],
+    ['binance_symbol', 'VARCHAR(32) NULL'],
+    ['hl_coin', 'VARCHAR(32) NULL'],
+    ['feed_checked_at', 'DATETIME NULL'],
+    ['last_feed', 'VARCHAR(16) NULL'],
+  ];
+  for (const [col, ddl] of assetCols) {
+    if (!(await hasColumn('assets', col))) await pool.query(`ALTER TABLE assets ADD COLUMN ${col} ${ddl}`);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS price_history (
       asset_id  INT       NOT NULL,
@@ -157,4 +170,14 @@ export async function getSetting(k: string): Promise<string | null> {
 
 export async function setSetting(k: string, v: string): Promise<void> {
   await pool.query('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [k, v]);
+}
+
+// MySQL 8.0 belum mendukung ADD COLUMN IF NOT EXISTS → cek manual.
+async function hasColumn(table: string, column: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column],
+  );
+  return rows.length > 0;
 }

@@ -114,7 +114,7 @@ export function Settings({ onExpired }: { onExpired: () => void }) {
 
       <div className="card card-pad stack">
         <h2 style={{ margin: 0 }}>Perbarui Harga Sekarang</h2>
-        <div className="hint">Harga otomatis diambil setiap menit. Tombol ini mengambil harga saat ini juga dan langsung mengecek semua target.</div>
+        <div className="hint">Harga diambil otomatis (Binance & Hyperliquid tiap 20 detik, CoinGecko & emas tiap menit). Tombol ini mengambil harga saat ini juga dan langsung mengecek semua target.</div>
         <div><button className="btn" onClick={refresh}>Perbarui Sekarang</button></div>
         {box(refreshMsg)}
       </div>

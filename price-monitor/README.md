@@ -21,12 +21,29 @@ API (Node) hanya jalan di jaringan internal Docker, jadi tidak membuka port di V
 
 ## Sumber data
 
-| Aset | Sumber | Catatan |
+| Aset | Sumber utama | Cadangan |
 |---|---|---|
-| Crypto (BTC, ETH, HYPE, dll.) | [CoinGecko](https://www.coingecko.com/en/api) `/simple/price` | Gratis tanpa key. Isi `COINGECKO_API_KEY` (key "Demo" gratis) kalau sering kena batas. |
-| Emas (XAU/USD per troy ounce) | [gold-api.com](https://gold-api.com) | Gratis tanpa key. Kalau sedang mati, otomatis memakai harga PAX Gold (PAXG) dari CoinGecko. |
+| Crypto yang ada di Binance (BTC, ETH, SOL, DOGE, …) | **Binance** spot, pasangan `<SIMBOL>USDT`. Realtime, tanpa API key | CoinGecko |
+| HYPE dan koin yang tidak ada di Binance tapi ada di Hyperliquid | **Hyperliquid** (harga perp, USDC) | CoinGecko |
+| Koin lainnya | **CoinGecko** | — |
+| Emas (XAU/USD per troy ounce) | **gold-api.com** | PAX Gold (PAXG) dari CoinGecko |
 
-Harga diambil setiap 60 detik (`PRICE_INTERVAL_SEC`). Riwayat disimpan 90 hari (`HISTORY_DAYS`).
+**Pemilihan sumber otomatis** (bisa diganti per koin di **Admin → Aset**):
+
+1. Binance dicoba dulu. Khusus HYPE, Hyperliquid dicoba lebih dulu karena itu bursa asalnya.
+2. Binance atau Hyperliquid hanya dipakai kalau harganya selisih **kurang dari 5%** dari harga CoinGecko. Ini mencegah salah koin, karena satu simbol bisa dipakai beberapa koin berbeda.
+3. Kalau tidak ada yang cocok, koin memakai CoinGecko. Koin seperti ini dicek ulang sekali sehari, siapa tahu baru listing di Binance.
+4. Kalau Binance atau Hyperliquid sedang gangguan, harga diambil sementara dari CoinGecko. Kalau koinnya delisting, sumbernya dipilih ulang otomatis.
+
+**Seberapa sering harga diambil:**
+
+- Binance & Hyperliquid: setiap **20 detik** (`PRICE_INTERVAL_SEC`).
+- CoinGecko & emas: paling sering **sekali per menit** (`COINGECKO_INTERVAL_SEC`), supaya tidak kena batas gratis.
+- Riwayat untuk grafik disimpan per menit selama 90 hari (`HISTORY_DAYS`).
+
+Harga Binance dalam USDT dan Hyperliquid dalam USDC. Selisih keduanya dengan USD biasanya di bawah 0,1%.
+
+Kalau `api.binance.com` diblokir dari VPS, isi `BINANCE_BASE_URL=https://data-api.binance.vision` di `.env`. Itu endpoint resmi Binance khusus data harga.
 
 ## Deploy
 
@@ -35,7 +52,7 @@ cd price-monitor
 cp .env.example .env
 nano .env                    # ganti semua password
 docker compose up -d --build
-docker compose logs -f api   # cek "[api] listening" dan "[monitor] cek harga setiap 60 detik"
+docker compose logs -f api   # cek "[api] listening" dan "[feeds] BTC → binance (BTCUSDT)"
 ```
 
 Buka `http://IP-VPS:8650`, lalu klik **Admin**. Login dengan `ADMIN_USERNAME` / `ADMIN_PASSWORD` dari `.env`. Kalau `ADMIN_PASSWORD` dikosongkan, password acak dicetak sekali di log:
@@ -111,7 +128,8 @@ price-monitor/
 │       ├── index.ts      # start server + loop pemantau
 │       ├── db.ts         # skema tabel & aset awal
 │       ├── auth.ts       # login admin (cookie sesi)
-│       ├── prices.ts     # ambil harga CoinGecko & emas
+│       ├── prices.ts     # ambil harga Binance, Hyperliquid, CoinGecko & emas
+│       ├── feeds.ts      # pilih sumber harga tiap koin
 │       ├── monitor.ts    # loop: harga → cek target → kirim WA
 │       ├── whatsapp.ts   # kirim via Fonnte
 │       └── routes.ts     # REST API

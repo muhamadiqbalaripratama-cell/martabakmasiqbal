@@ -54,3 +54,11 @@ export const KIND_LABEL: Record<AlertKind, string> = {
 export function describe(kind: AlertKind, target: number): string {
   return kind === 'above' || kind === 'below' ? `${KIND_LABEL[kind]} ${usd(target)}` : `${KIND_LABEL[kind]} ${target}%`;
 }
+
+export const FEED_LABEL: Record<string, string> = {
+  binance: 'Binance',
+  hyperliquid: 'Hyperliquid',
+  coingecko: 'CoinGecko',
+  'gold-api': 'gold-api',
+  paxg: 'PAXG',
+};

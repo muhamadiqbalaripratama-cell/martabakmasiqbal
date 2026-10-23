@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type Asset } from '../api';
 import { PriceChart, Sparkline } from '../components/Chart';
 import { Change, CoinIcon } from '../components/ui';
-import { ago, usd, wib } from '../format';
+import { ago, FEED_LABEL, usd, wib } from '../format';
 
 type Point = [number, number];
 type PricesRes = { assets: Asset[]; monitor: { interval_sec: number; last_run_at: string | null; last_error: string | null } };
@@ -80,11 +80,19 @@ export function Dashboard() {
             <Sparkline points={sparks[a.id] ?? []} />
             <div className="pc-foot">
               <Change value={a.change_24h} />
-              <span className="muted small">{a.price_at ? wib(a.price_at, false) : 'menunggu data'}</span>
+              <span className="muted small">
+                {a.price_at ? `${a.last_feed ? FEED_LABEL[a.last_feed] ?? a.last_feed : ''} · ${wib(a.price_at, false)}` : 'menunggu data'}
+              </span>
             </div>
           </button>
         ))}
       </div>
+      {data && data.assets.length > 0 && (
+        <p className="hint" style={{ marginTop: 18 }}>
+          Harga crypto dari Binance (pasangan USDT), Hyperliquid (USDC), atau CoinGecko (USD). Selisih USDT/USDC dengan USD biasanya
+          di bawah 0,1%. Emas: harga spot XAU/USD per troy ounce.
+        </p>
+      )}
       {open && <AssetModal asset={data?.assets.find((a) => a.id === open.id) ?? open} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -148,6 +156,7 @@ function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
             <div><div className="muted">Terendah</div><b className="num">{usd(lo)}</b></div>
             <div><div className="muted">Perubahan 24 jam</div><Change value={asset.change_24h} /></div>
             <div><div className="muted">Update terakhir</div><b>{wib(asset.price_at)}</b></div>
+            <div><div className="muted">Sumber</div><b>{asset.last_feed ? FEED_LABEL[asset.last_feed] ?? asset.last_feed : '—'}</b></div>
           </div>
         </div>
       </div>

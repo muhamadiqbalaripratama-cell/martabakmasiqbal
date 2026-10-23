@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { changePassword, login, logout, me, requireAdmin } from './auth';
 import { getSetting, pool, setSetting } from './db';
 import { activePhones, logNotification, monitorState, runOnce, type AlertKind } from './monitor';
+import { chooseFeed, FeedError, saveFeed, type FeedMode } from './feeds';
 import { fetchCoinGecko, searchCoins } from './prices';
 import { getFonnteToken, normalizePhone, sendWhatsApp } from './whatsapp';
 
@@ -27,7 +28,7 @@ publicRouter.get(
   '/prices',
   h(async (_req, res) => {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, symbol, name, source, image_url, price, change_24h, price_at
+      `SELECT id, symbol, name, source, image_url, price, change_24h, price_at, last_feed
          FROM assets WHERE active = 1 ORDER BY sort_order, id`,
     );
     res.json({
@@ -129,9 +130,20 @@ adminRouter.post(
        VALUES (?, ?, 'coingecko', ?, ?, ?, ?, ?, UTC_TIMESTAMP())`,
       [symbol, name, coinId, image, mx[0].n, quote.price, quote.change24h],
     );
-    res.json({ id: r.insertId });
+    // Pilih sumber harga sekarang juga; kalau gagal, monitor mencoba lagi nanti.
+    let feed: string | null = null;
+    try {
+      const c = await chooseFeed({ symbol, source_id: coinId }, 'auto', quote.price);
+      await saveFeed(r.insertId, c);
+      feed = c.feed;
+    } catch (e) {
+      console.warn(`[feeds] ${symbol}:`, e instanceof Error ? e.message : e);
+    }
+    res.json({ id: r.insertId, feed });
   }),
 );
+
+const FEED_MODES: FeedMode[] = ['auto', 'binance', 'hyperliquid', 'coingecko'];
 
 adminRouter.patch(
   '/assets/:id',
@@ -153,6 +165,23 @@ adminRouter.patch(
     if (req.body?.sort_order !== undefined && Number.isInteger(req.body.sort_order)) {
       sets.push('sort_order = ?');
       vals.push(req.body.sort_order);
+    }
+    if (req.body?.feed_mode !== undefined) {
+      const mode = String(req.body.feed_mode) as FeedMode;
+      if (!FEED_MODES.includes(mode)) return res.status(400).json({ error: 'invalid_input' });
+      const [rows] = await pool.query<RowDataPacket[]>("SELECT symbol, source_id FROM assets WHERE id = ? AND source = 'coingecko'", [id]);
+      if (!rows[0]) return res.status(400).json({ error: 'invalid_input' });
+      try {
+        let ref: number | null = null;
+        if (mode === 'auto') ref = (await fetchCoinGecko([rows[0].source_id])).get(rows[0].source_id)?.price ?? null;
+        const c = await chooseFeed(rows[0] as { symbol: string; source_id: string }, mode, ref);
+        await saveFeed(id, c);
+      } catch (e) {
+        if (e instanceof FeedError) return res.status(400).json({ error: 'feed_unavailable', detail: e.message });
+        return res.status(502).json({ error: 'feed_check_failed', detail: e instanceof Error ? e.message : String(e) });
+      }
+      sets.push('feed_mode = ?');
+      vals.push(mode);
     }
     if (!sets.length) return res.status(400).json({ error: 'nothing_to_update' });
     await pool.query(`UPDATE assets SET ${sets.join(', ')} WHERE id = ?`, [...vals, id]);

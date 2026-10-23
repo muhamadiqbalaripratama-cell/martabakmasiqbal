@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, errorText, type Asset } from '../api';
 import { CoinIcon, Switch } from '../components/ui';
-import { pct, usd } from '../format';
+import { FEED_LABEL, pct, usd } from '../format';
 
 type Coin = { id: string; symbol: string; name: string; thumb: string | null; rank: number | null };
 
@@ -66,6 +66,21 @@ export function AssetsAdmin({ onExpired }: { onExpired: () => void }) {
     setAssets(list);
     await Promise.all(list.map((a, idx) => api(`/admin/assets/${a.id}`, { method: 'PATCH', body: { sort_order: idx } }))).catch(fail);
   };
+  const [feedBusy, setFeedBusy] = useState<number | null>(null);
+  const setFeed = async (a: Asset, feed_mode: string) => {
+    setErr(null);
+    setOk(null);
+    setFeedBusy(a.id);
+    try {
+      await api(`/admin/assets/${a.id}`, { method: 'PATCH', body: { feed_mode } });
+      setOk(`Sumber harga ${a.symbol} diperbarui.`);
+      await load();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setFeedBusy(null);
+    }
+  };
   const remove = (a: Asset) =>
     confirm(`Hapus ${a.symbol}? Semua target dan riwayat harganya ikut terhapus.`) &&
     api(`/admin/assets/${a.id}`, { method: 'DELETE' }).then(load).catch(fail);
@@ -111,7 +126,11 @@ export function AssetsAdmin({ onExpired }: { onExpired: () => void }) {
       <div className="card">
         <div className="card-pad" style={{ paddingBottom: 4 }}>
           <h2>Aset Dipantau</h2>
-          <div className="hint">Aset nonaktif tidak tampil di dashboard dan harganya tidak diambil.</div>
+          <div className="hint">
+            Aset nonaktif tidak tampil di dashboard dan harganya tidak diambil. Sumber "Otomatis" memilih Binance → Hyperliquid →
+            CoinGecko, dan hanya memakai Binance/Hyperliquid kalau harganya cocok dengan CoinGecko (supaya tidak tertukar dengan koin lain
+            bersimbol sama). Kalau sumber utama gangguan, harga otomatis diambil dari CoinGecko.
+          </div>
         </div>
         {assets === null ? (
           <div className="empty">Memuat…</div>
@@ -124,11 +143,32 @@ export function AssetsAdmin({ onExpired }: { onExpired: () => void }) {
                 <div className="row-main">
                   <b>{a.symbol}</b> <span className="muted">{a.name}</span>{' '}
                   {a.source === 'gold' && <span className="badge gold">emas spot</span>}
+                  {a.source !== 'gold' && (
+                    <span className="badge" title={a.binance_symbol ?? a.hl_coin ?? a.source_id}>
+                      {a.feed ? FEED_LABEL[a.feed] : 'memilih sumber…'}
+                      {a.binance_symbol ? ` · ${a.binance_symbol}` : ''}
+                    </span>
+                  )}
                   <div className="muted small num">
                     {usd(a.price)} · 24 jam {pct(a.change_24h)} · {a.active_alerts ?? 0} target aktif
                   </div>
                 </div>
                 <div className="row-actions">
+                  {a.source !== 'gold' && (
+                    <select
+                      className="input"
+                      style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                      value={a.feed_mode ?? 'auto'}
+                      disabled={feedBusy === a.id}
+                      onChange={(e) => setFeed(a, e.target.value)}
+                      aria-label={`Sumber harga ${a.symbol}`}
+                    >
+                      <option value="auto">Sumber: Otomatis</option>
+                      <option value="binance">Sumber: Binance</option>
+                      <option value="hyperliquid">Sumber: Hyperliquid</option>
+                      <option value="coingecko">Sumber: CoinGecko</option>
+                    </select>
+                  )}
                   <button className="btn btn-sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Naik">↑</button>
                   <button className="btn btn-sm" onClick={() => move(i, 1)} disabled={i === assets.length - 1} aria-label="Turun">↓</button>
                   {a.source !== 'gold' && <button className="btn btn-sm btn-danger" onClick={() => remove(a)}>Hapus</button>}

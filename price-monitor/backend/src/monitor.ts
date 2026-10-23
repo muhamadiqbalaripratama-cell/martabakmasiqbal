@@ -1,10 +1,13 @@
 // Loop utama: ambil harga → simpan → cek target → kirim WA.
 import type { RowDataPacket } from 'mysql2';
 import { pool } from './db';
-import { fetchCoinGecko, fetchCoinImages, fetchGold, type Quote } from './prices';
+import { resolvePendingFeeds } from './feeds';
+import { fetchBinance, fetchCoinGecko, fetchCoinImages, fetchGold, fetchHyperliquid, HttpError, type Quote } from './prices';
 import { sendWhatsApp } from './whatsapp';
 
-const INTERVAL_SEC = Math.max(30, Number(process.env.PRICE_INTERVAL_SEC) || 60);
+const INTERVAL_SEC = Math.max(10, Number(process.env.PRICE_INTERVAL_SEC) || 20);
+// CoinGecko & gold-api tidak perlu (dan tidak boleh) dipanggil sesering Binance.
+const SLOW_SOURCE_SEC = Math.max(30, Number(process.env.COINGECKO_INTERVAL_SEC) || 60);
 const HISTORY_DAYS = Math.max(7, Number(process.env.HISTORY_DAYS) || 90);
 
 export const monitorState = {
@@ -75,42 +78,127 @@ async function change24hFromHistory(assetId: number, price: number): Promise<num
   return old ? ((price - old) / old) * 100 : null;
 }
 
+type AssetRow = RowDataPacket & {
+  id: number;
+  symbol: string;
+  source: 'coingecko' | 'gold';
+  source_id: string;
+  feed: 'binance' | 'hyperliquid' | 'coingecko' | null;
+  binance_symbol: string | null;
+  hl_coin: string | null;
+};
+
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+// Sumber tidak punya koin itu lagi (delisting) → kosongkan supaya dipilih ulang.
+async function resetFeed(a: AssetRow, why: string) {
+  await pool.query('UPDATE assets SET feed = NULL, binance_symbol = NULL, hl_coin = NULL, feed_checked_at = NULL WHERE id = ?', [a.id]);
+  console.warn(`[monitor] ${a.symbol}: ${why} — sumber harga akan dipilih ulang`);
+}
+
+async function binanceQuotes(list: AssetRow[]): Promise<Map<string, Quote>> {
+  const symbols = list.map((a) => a.binance_symbol!);
+  try {
+    return await fetchBinance(symbols);
+  } catch (e) {
+    // 400 = ada simbol yang tidak valid; ambil satu per satu untuk menemukan yang mana.
+    if (!(e instanceof HttpError && e.status === 400)) throw e;
+    const out = new Map<string, Quote>();
+    for (const a of list) {
+      try {
+        (await fetchBinance([a.binance_symbol!])).forEach((q, k) => out.set(k, q));
+      } catch (e2) {
+        if (e2 instanceof HttpError && e2.status === 400) await resetFeed(a, `${a.binance_symbol} tidak ada lagi di Binance`);
+        else throw e2;
+      }
+    }
+    return out;
+  }
+}
+
+let lastSlowFetch = 0;
+
 async function updatePrices(): Promise<void> {
-  const [assets] = await pool.query<RowDataPacket[]>('SELECT id, source, source_id FROM assets WHERE active = 1');
-  const coinIds = assets.filter((a) => a.source === 'coingecko').map((a) => a.source_id as string);
+  const [assets] = await pool.query<AssetRow[]>(
+    'SELECT id, symbol, source, source_id, feed, binance_symbol, hl_coin FROM assets WHERE active = 1',
+  );
+  const crypto = assets.filter((a) => a.source === 'coingecko');
+  const got = new Map<number, { q: Quote; feed: string }>();
   const errors: string[] = [];
 
-  let coins = new Map<string, Quote>();
-  if (coinIds.length) {
+  const bn = crypto.filter((a) => a.feed === 'binance' && a.binance_symbol);
+  if (bn.length) {
     try {
-      coins = await fetchCoinGecko([...new Set(coinIds)]);
+      const m = await binanceQuotes(bn);
+      for (const a of bn) {
+        const q = m.get(a.binance_symbol!);
+        if (q) got.set(a.id, { q, feed: 'binance' });
+      }
     } catch (e) {
-      errors.push(`CoinGecko: ${e instanceof Error ? e.message : e}`);
+      errors.push(`Binance: ${errText(e)}`);
     }
   }
-  let gold: number | null = null;
-  if (assets.some((a) => a.source === 'gold')) {
+
+  const hl = crypto.filter((a) => a.feed === 'hyperliquid' && a.hl_coin);
+  if (hl.length) {
     try {
-      gold = await fetchGold();
+      const m = await fetchHyperliquid();
+      for (const a of hl) {
+        const q = m.get(a.hl_coin!);
+        if (q) got.set(a.id, { q, feed: 'hyperliquid' });
+        else await resetFeed(a, `${a.hl_coin} tidak ada lagi di Hyperliquid`);
+      }
     } catch (e) {
-      errors.push(`Emas: ${e instanceof Error ? e.message : e}`);
+      errors.push(`Hyperliquid: ${errText(e)}`);
+    }
+  }
+
+  // CoinGecko: koin yang memang pakai CoinGecko + cadangan kalau Binance/Hyperliquid gagal.
+  const slowDue = Date.now() - lastSlowFetch >= SLOW_SOURCE_SEC * 1000;
+  const golds = assets.filter((a) => a.source === 'gold');
+  const need = crypto.filter((a) => !got.has(a.id));
+  if (slowDue && (need.length || golds.length)) {
+    lastSlowFetch = Date.now();
+    if (need.length) {
+      try {
+        const m = await fetchCoinGecko([...new Set(need.map((a) => a.source_id))]);
+        for (const a of need) {
+          const q = m.get(a.source_id);
+          if (q) got.set(a.id, { q, feed: 'coingecko' });
+        }
+      } catch (e) {
+        errors.push(`CoinGecko: ${errText(e)}`);
+      }
+    }
+    if (golds.length) {
+      try {
+        const g = await fetchGold();
+        for (const a of golds) {
+          got.set(a.id, { q: { price: g.price, change24h: await change24hFromHistory(a.id, g.price) }, feed: g.feed });
+        }
+      } catch (e) {
+        errors.push(`Emas: ${errText(e)}`);
+      }
     }
   }
 
   const now = new Date();
   now.setMilliseconds(0);
-  for (const a of assets) {
-    let q: Quote | undefined;
-    if (a.source === 'coingecko') q = coins.get(a.source_id);
-    else if (gold !== null) q = { price: gold, change24h: await change24hFromHistory(a.id, gold) };
-    if (!q) continue;
-    await pool.query('UPDATE assets SET price = ?, change_24h = ?, price_at = ? WHERE id = ?', [
+  // Riwayat disimpan per menit (harga terakhir di menit itu) supaya tabel tidak membengkak.
+  const minute = new Date(now);
+  minute.setSeconds(0);
+  for (const [id, { q, feed }] of got) {
+    await pool.query('UPDATE assets SET price = ?, change_24h = ?, price_at = ?, last_feed = ? WHERE id = ?', [
       q.price,
       q.change24h,
       now,
-      a.id,
+      feed,
+      id,
     ]);
-    await pool.query('INSERT IGNORE INTO price_history (asset_id, ts, price) VALUES (?, ?, ?)', [a.id, now, q.price]);
+    await pool.query(
+      'INSERT INTO price_history (asset_id, ts, price) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = VALUES(price)',
+      [id, minute, q.price],
+    );
   }
   if (errors.length) throw new Error(errors.join(' | '));
 }
@@ -218,6 +306,11 @@ export async function runOnce(): Promise<void> {
   running = true;
   try {
     let priceError: string | null = null;
+    try {
+      await resolvePendingFeeds();
+    } catch (e) {
+      console.warn('[monitor] pemilihan sumber:', errText(e));
+    }
     try {
       await updatePrices();
     } catch (e) {
