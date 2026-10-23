@@ -49,6 +49,7 @@ services:
       BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
       HISTORY_DAYS: ${HISTORY_DAYS:-90}
       COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      COINGECKO_PLAN: ${COINGECKO_PLAN:-demo}
       FONNTE_TOKEN: ${FONNTE_TOKEN:-}
       TZ: Asia/Jakarta
     depends_on:

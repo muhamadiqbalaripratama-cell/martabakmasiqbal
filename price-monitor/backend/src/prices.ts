@@ -4,7 +4,10 @@
 //  - Emas:   gold-api.com (gratis, tanpa key). Cadangan: harga PAX Gold (PAXG) di CoinGecko,
 //            token yang 1:1 dijamin 1 troy ounce emas.
 
-const COINGECKO_BASE = process.env.COINGECKO_BASE_URL || 'https://api.coingecko.com/api/v3';
+// Key "Pro" (berbayar) memakai alamat & header yang berbeda dari key "Demo" (gratis).
+const CG_PRO = process.env.COINGECKO_PLAN === 'pro';
+const COINGECKO_BASE =
+  process.env.COINGECKO_BASE_URL || (CG_PRO ? 'https://pro-api.coingecko.com/api/v3' : 'https://api.coingecko.com/api/v3');
 const GOLD_API_URL = process.env.GOLD_API_URL || 'https://api.gold-api.com/price/XAU';
 const BINANCE_BASE = process.env.BINANCE_BASE_URL || 'https://api.binance.com';
 const HYPERLIQUID_URL = process.env.HYPERLIQUID_URL || 'https://api.hyperliquid.xyz/info';
@@ -16,24 +19,45 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     host: string,
+    detail = '',
   ) {
-    super(`HTTP ${status} dari ${host}`);
+    super(`HTTP ${status} dari ${host}${detail ? ` (${detail})` : ''}`);
   }
+}
+
+// Ambil pesan error singkat dari isi respons (CoinGecko, Binance, dll.).
+function errorDetail(text: string): string {
+  try {
+    const j = JSON.parse(text);
+    const m = j?.status?.error_message ?? j?.error ?? j?.msg ?? j?.message;
+    if (m) return String(typeof m === 'object' ? JSON.stringify(m) : m).slice(0, 200);
+  } catch {
+    /* bukan JSON */
+  }
+  return text.replace(/\s+/g, ' ').slice(0, 120);
 }
 
 async function getJson(url: string, init?: { method: 'POST'; body: unknown }): Promise<unknown> {
   const headers: Record<string, string> = { accept: 'application/json', 'user-agent': 'price-monitor/0.2' };
   if (url.startsWith(COINGECKO_BASE) && process.env.COINGECKO_API_KEY) {
-    headers['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY;
+    headers[CG_PRO ? 'x-cg-pro-api-key' : 'x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY;
   }
   if (init) headers['content-type'] = 'application/json';
-  const res = await fetch(url, {
-    method: init?.method ?? 'GET',
-    body: init ? JSON.stringify(init.body) : undefined,
-    headers,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new HttpError(res.status, new URL(url).host);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: init?.method ?? 'GET',
+      body: init ? JSON.stringify(init.body) : undefined,
+      headers,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e) {
+    // "fetch failed" saja tidak membantu — sertakan penyebabnya (DNS, TLS, timeout, ...).
+    const cause = (e as { cause?: { code?: string; message?: string } }).cause;
+    const why = cause?.code || cause?.message || (e instanceof Error ? e.message : String(e));
+    throw new Error(`tidak bisa tersambung ke ${new URL(url).host}: ${why}`);
+  }
+  if (!res.ok) throw new HttpError(res.status, new URL(url).host, errorDetail(await res.text().catch(() => '')));
   return res.json();
 }
 
@@ -109,18 +133,40 @@ export async function fetchCoinGecko(ids: string[]): Promise<Map<string, Quote>>
   return out;
 }
 
+let lastGoldApiError = '';
+
 // Harga emas spot USD per troy ounce. change24h dihitung dari riwayat oleh pemanggil.
+// Urutan: gold-api.com → PAXG di Binance → PAXG di CoinGecko.
+// PAX Gold (PAXG) adalah token yang dijamin 1 troy ounce emas, harganya mengikuti emas spot.
 export async function fetchGold(): Promise<{ price: number; feed: string }> {
+  const errors: string[] = [];
   try {
     const data = (await getJson(GOLD_API_URL)) as { price?: unknown };
-    if (isNum(data?.price) && data.price > 0) return { price: data.price, feed: 'gold-api' };
-    throw new Error('format respons gold-api tidak dikenal');
+    if (isNum(data?.price) && data.price > 0) {
+      if (lastGoldApiError) console.log('[prices] gold-api pulih');
+      lastGoldApiError = '';
+      return { price: data.price, feed: 'gold-api' };
+    }
+    errors.push('gold-api: format respons tidak dikenal');
   } catch (e) {
-    console.warn('[prices] gold-api gagal, pakai PAXG:', e instanceof Error ? e.message : e);
-    const q = (await fetchCoinGecko(['pax-gold'])).get('pax-gold');
-    if (!q) throw new Error('harga emas tidak tersedia');
-    return { price: q.price, feed: 'paxg' };
+    errors.push(`gold-api: ${e instanceof Error ? e.message : e}`);
   }
+  // Catat sekali saat penyebabnya berubah, bukan tiap menit.
+  if (errors[0] !== lastGoldApiError) console.warn(`[prices] ${errors[0]} — memakai harga PAXG`);
+  lastGoldApiError = errors[0];
+  try {
+    const q = (await fetchBinance(['PAXGUSDT'])).get('PAXGUSDT');
+    if (q) return { price: q.price, feed: 'paxg' };
+  } catch (e) {
+    errors.push(`Binance PAXG: ${e instanceof Error ? e.message : e}`);
+  }
+  try {
+    const q = (await fetchCoinGecko(['pax-gold'])).get('pax-gold');
+    if (q) return { price: q.price, feed: 'paxg' };
+  } catch (e) {
+    errors.push(`CoinGecko PAXG: ${e instanceof Error ? e.message : e}`);
+  }
+  throw new Error(errors.join('; '));
 }
 
 export type CoinSearchResult = { id: string; symbol: string; name: string; thumb: string | null; rank: number | null };

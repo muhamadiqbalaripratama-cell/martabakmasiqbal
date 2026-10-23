@@ -26,12 +26,12 @@ API (Node) hanya jalan di jaringan internal Docker, jadi tidak membuka port di V
 | Crypto yang ada di Binance (BTC, ETH, SOL, DOGE, …) | **Binance** spot, pasangan `<SIMBOL>USDT`. Realtime, tanpa API key | CoinGecko |
 | HYPE dan koin yang tidak ada di Binance tapi ada di Hyperliquid | **Hyperliquid** (harga perp, USDC) | CoinGecko |
 | Koin lainnya | **CoinGecko** | — |
-| Emas (XAU/USD per troy ounce) | **gold-api.com** | PAX Gold (PAXG) dari CoinGecko |
+| Emas (XAU/USD per troy ounce) | **gold-api.com** | PAX Gold (PAXG) dari Binance, lalu dari CoinGecko |
 
 **Pemilihan sumber otomatis** (bisa diganti per koin di **Admin → Aset**):
 
-1. Binance dicoba dulu. Khusus HYPE, Hyperliquid dicoba lebih dulu karena itu bursa asalnya.
-2. Binance atau Hyperliquid hanya dipakai kalau harganya selisih **kurang dari 5%** dari harga CoinGecko. Ini mencegah salah koin, karena satu simbol bisa dipakai beberapa koin berbeda.
+1. Koin besar (BTC, ETH, SOL, BNB, XRP, DOGE, dll.) langsung memakai Binance dan HYPE memakai Hyperliquid, tanpa perlu CoinGecko. Koin lain: Binance dicoba dulu. Khusus HYPE, Hyperliquid dicoba lebih dulu karena itu bursa asalnya.
+2. Binance atau Hyperliquid hanya dipakai kalau harganya selisih **kurang dari 5%** dari harga CoinGecko. Kalau CoinGecko sedang tidak bisa dipakai, Binance dan Hyperliquid dicocokkan satu sama lain. Ini mencegah salah koin, karena satu simbol bisa dipakai beberapa koin berbeda.
 3. Kalau tidak ada yang cocok, koin memakai CoinGecko. Koin seperti ini dicek ulang sekali sehari, siapa tahu baru listing di Binance.
 4. Kalau Binance atau Hyperliquid sedang gangguan, harga diambil sementara dari CoinGecko. Kalau koinnya delisting, sumbernya dipilih ulang otomatis.
 

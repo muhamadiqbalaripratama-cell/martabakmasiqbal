@@ -4,7 +4,10 @@
 // Khusus HYPE, Hyperliquid dicoba lebih dulu karena itu bursa asalnya.
 //
 // Satu simbol bisa dipakai beberapa koin berbeda, jadi Binance/Hyperliquid hanya
-// dipakai kalau harganya selisih < 5% dari harga CoinGecko koin tersebut.
+// dipakai kalau harganya cocok (selisih < 5%) dengan pembanding:
+//   1. harga CoinGecko koin tersebut, atau
+//   2. kalau CoinGecko sedang tidak bisa dipakai: harga Binance dan Hyperliquid saling cocok.
+// Koin besar di daftar KNOWN sudah pasti pasangannya, jadi tidak perlu pembanding.
 import type { RowDataPacket } from 'mysql2';
 import { pool } from './db';
 import { binanceTrading, fetchBinance, fetchCoinGecko, fetchHyperliquid } from './prices';
@@ -18,6 +21,26 @@ const close = (a: number, b: number) => Math.abs(a - b) / b < MAX_DIFF;
 type Choice = { feed: Feed; binance_symbol: string | null; hl_coin: string | null };
 
 export class FeedError extends Error {}
+
+// id CoinGecko → sumber yang sudah pasti benar.
+const KNOWN_BINANCE: Record<string, string> = {
+  bitcoin: 'BTCUSDT',
+  ethereum: 'ETHUSDT',
+  solana: 'SOLUSDT',
+  binancecoin: 'BNBUSDT',
+  ripple: 'XRPUSDT',
+  dogecoin: 'DOGEUSDT',
+  cardano: 'ADAUSDT',
+  tron: 'TRXUSDT',
+  chainlink: 'LINKUSDT',
+  'avalanche-2': 'AVAXUSDT',
+  sui: 'SUIUSDT',
+  litecoin: 'LTCUSDT',
+  polkadot: 'DOTUSDT',
+  'the-open-network': 'TONUSDT',
+  pepe: 'PEPEUSDT',
+};
+const KNOWN_HL: Record<string, string> = { hyperliquid: 'HYPE' };
 
 // Hasil Hyperliquid dipakai bersama selama satu putaran deteksi.
 let hlCache: { at: number; data: Map<string, { price: number }> } | null = null;
@@ -57,19 +80,37 @@ export async function chooseFeed(asset: { symbol: string; source_id: string }, m
     if (!c) throw new FeedError(`${sym} tidak ada di Hyperliquid`);
     return c;
   }
-  // auto — tanpa pembanding, jangan menebak; coba lagi nanti.
-  if (ref === null) throw new FeedError('Harga CoinGecko belum tersedia untuk pembanding');
-  const order = asset.source_id === 'hyperliquid' ? [tryHyperliquid, tryBinance] : [tryBinance, tryHyperliquid];
-  for (const tryIt of order) {
-    try {
+  try {
+    // Koin yang pasangannya sudah pasti.
+    const hlKnown = KNOWN_HL[asset.source_id];
+    if (hlKnown && (await hlQuotes()).has(hlKnown)) return { feed: 'hyperliquid', binance_symbol: null, hl_coin: hlKnown };
+    const bnKnown = KNOWN_BINANCE[asset.source_id];
+    if (bnKnown && (await binanceTrading(bnKnown))) return { feed: 'binance', binance_symbol: bnKnown, hl_coin: null };
+
+    if (ref === null) {
+      // CoinGecko tidak tersedia: pakai Binance/Hyperliquid hanya kalau keduanya saling cocok.
+      const pair = `${sym}USDT`;
+      const hl = (await hlQuotes()).get(sym);
+      const bn = hl && (await binanceTrading(pair)) ? (await fetchBinance([pair])).get(pair) : undefined;
+      if (hl && bn && close(bn.price, hl.price)) {
+        return asset.source_id === 'hyperliquid'
+          ? { feed: 'hyperliquid', binance_symbol: null, hl_coin: sym }
+          : { feed: 'binance', binance_symbol: pair, hl_coin: null };
+      }
+      throw new FeedError('belum bisa dipastikan tanpa harga CoinGecko, dicoba lagi nanti');
+    }
+
+    const order = asset.source_id === 'hyperliquid' ? [tryHyperliquid, tryBinance] : [tryBinance, tryHyperliquid];
+    for (const tryIt of order) {
       const c = await tryIt(sym, ref);
       if (c) return c;
-    } catch (e) {
-      // Satu sumber sedang gangguan → jangan langsung jatuh ke CoinGecko permanen.
-      throw new FeedError(`Gagal mengecek sumber: ${e instanceof Error ? e.message : e}`);
     }
+    return cg;
+  } catch (e) {
+    if (e instanceof FeedError) throw e;
+    // Satu sumber sedang gangguan → jangan langsung jatuh ke CoinGecko permanen.
+    throw new FeedError(`gagal mengecek sumber: ${e instanceof Error ? e.message : e}`);
   }
-  return cg;
 }
 
 export async function saveFeed(assetId: number, c: Choice): Promise<void> {
@@ -88,7 +129,7 @@ export async function resolvePendingFeeds(): Promise<void> {
        AND (feed IS NULL
             OR (feed_mode = 'auto' AND feed = 'coingecko'
                 AND (feed_checked_at IS NULL OR feed_checked_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 24 HOUR))))
-       AND (feed_checked_at IS NULL OR feed_checked_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 10 MINUTE))
+       AND (feed_checked_at IS NULL OR feed_checked_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE))
      LIMIT 10`);
   if (!rows.length) return;
 
@@ -106,7 +147,7 @@ export async function resolvePendingFeeds(): Promise<void> {
       await saveFeed(r.id, c);
       if (c.feed !== r.feed) console.log(`[feeds] ${r.symbol} → ${c.feed}${c.binance_symbol ? ` (${c.binance_symbol})` : ''}`);
     } catch (e) {
-      // Tandai sudah dicek supaya dicoba lagi 10 menit kemudian, bukan tiap putaran.
+      // Tandai sudah dicek supaya dicoba lagi 2 menit kemudian, bukan tiap putaran.
       await pool.query('UPDATE assets SET feed_checked_at = UTC_TIMESTAMP() WHERE id = ?', [r.id]);
       console.warn(`[feeds] ${r.symbol}: ${e instanceof Error ? e.message : e}`);
     }

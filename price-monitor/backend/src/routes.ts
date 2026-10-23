@@ -126,8 +126,8 @@ adminRouter.post(
     }
     const [mx] = await pool.query<RowDataPacket[]>('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM assets');
     const [r] = await pool.query<ResultSetHeader>(
-      `INSERT INTO assets (symbol, name, source, source_id, image_url, sort_order, price, change_24h, price_at)
-       VALUES (?, ?, 'coingecko', ?, ?, ?, ?, ?, UTC_TIMESTAMP())`,
+      `INSERT INTO assets (symbol, name, source, source_id, image_url, sort_order, price, change_24h, price_at, last_feed)
+       VALUES (?, ?, 'coingecko', ?, ?, ?, ?, ?, UTC_TIMESTAMP(), 'coingecko')`,
       [symbol, name, coinId, image, mx[0].n, quote.price, quote.change24h],
     );
     // Pilih sumber harga sekarang juga; kalau gagal, monitor mencoba lagi nanti.
@@ -173,7 +173,12 @@ adminRouter.patch(
       if (!rows[0]) return res.status(400).json({ error: 'invalid_input' });
       try {
         let ref: number | null = null;
-        if (mode === 'auto') ref = (await fetchCoinGecko([rows[0].source_id])).get(rows[0].source_id)?.price ?? null;
+        if (mode === 'auto') {
+          // CoinGecko gagal → tetap bisa memilih lewat daftar koin besar / cek silang Binance-Hyperliquid.
+          ref = await fetchCoinGecko([rows[0].source_id])
+            .then((m) => m.get(rows[0].source_id)?.price ?? null)
+            .catch(() => null);
+        }
         const c = await chooseFeed(rows[0] as { symbol: string; source_id: string }, mode, ref);
         await saveFeed(id, c);
       } catch (e) {
