@@ -1,6 +1,9 @@
 # Pantau Harga — Emas, BTC, ETH, Hyperliquid & crypto lain + notifikasi WhatsApp.
-# Port yang dipakai di host:
-#   8650  → website (nginx)
+# Website TIDAK membuka port di server: hanya bisa diakses lewat Nginx Proxy Manager
+# (NPM) yang tersambung ke jaringan Docker-nya. Di NPM, arahkan domain ke pm-web port 80.
+# Nama jaringan NPM diatur lewat NPM_NETWORK di .env (lihat README).
+#
+# Port lain di host:
 #   3356  → MySQL, hanya dari VPS itu sendiri (127.0.0.1), untuk DBeaver via SSH tunnel
 name: price-monitor
 
@@ -65,16 +68,20 @@ services:
     pull_policy: build
     container_name: pm-web
     restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-8650}:80"
+    # Sengaja tanpa "ports:" — lihat catatan di atas.
     depends_on:
       - api
     networks:
       - pm-net
+      - proxy
 
 networks:
   pm-net:
     driver: bridge
+  # Jaringan milik Nginx Proxy Manager (sudah ada, dibuat oleh NPM).
+  proxy:
+    external: true
+    name: ${NPM_NETWORK:?Isi NPM_NETWORK di .env dengan nama jaringan Docker Nginx Proxy Manager}
 
 volumes:
   pm-mysql-data:

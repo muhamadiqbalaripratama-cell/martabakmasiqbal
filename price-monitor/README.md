@@ -10,14 +10,16 @@ Website untuk memantau harga (semua dalam **USD**) dan mengirim **WhatsApp** saa
   - **Riwayat Notifikasi**: semua pesan yang terkirim atau gagal.
   - **Pengaturan**: token Fonnte, kirim pesan tes, perbarui harga sekarang, ganti password.
 
-## Port
+## Akses: hanya lewat domain (Nginx Proxy Manager)
+
+Website **tidak membuka port** di server, jadi tidak bisa dibuka lewat `http://IP-VPS:port`. Container `pm-web` hanya tersambung ke jaringan Docker milik Nginx Proxy Manager (NPM). NPM yang meneruskan domain Anda ke website ini.
 
 | Port di VPS | Untuk |
 |---|---|
-| **8650** | Website (bisa diganti lewat `WEB_PORT` di `.env`) |
+| — | Website: tidak ada, hanya lewat NPM |
 | **3356** | MySQL, hanya bisa diakses dari VPS itu sendiri (`127.0.0.1`) |
 
-API (Node) hanya jalan di jaringan internal Docker, jadi tidak membuka port di VPS.
+> Port yang dibuka Docker (`ports:`) **menembus UFW**. Menutup port dengan `ufw deny` tidak cukup, jadi port website memang dihapus sepenuhnya.
 
 ## Sumber data
 
@@ -47,15 +49,37 @@ Kalau `api.binance.com` diblokir dari VPS, isi `BINANCE_BASE_URL=https://data-ap
 
 ## Deploy
 
+### 1. Cari nama jaringan Docker Nginx Proxy Manager
+
+```bash
+docker ps --format '{{.Names}}' | grep -i -E "npm|proxy"        # nama container NPM
+docker inspect <nama-container-npm> --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+```
+
+Hasilnya misalnya `npm_default` atau `nginx-proxy-manager_default`.
+
+### 2. Siapkan `.env` dan jalankan
+
 ```bash
 cd price-monitor
 cp .env.example .env
-nano .env                    # ganti semua password
+nano .env    # ganti semua password, isi NPM_NETWORK dengan nama jaringan dari langkah 1, COOKIE_SECURE=true
 docker compose up -d --build
 docker compose logs -f api   # cek "[api] listening" dan "[feeds] BTC → binance (BTCUSDT)"
 ```
 
-Buka `http://IP-VPS:8650`, lalu klik **Admin**. Login dengan `ADMIN_USERNAME` / `ADMIN_PASSWORD` dari `.env`. Kalau `ADMIN_PASSWORD` dikosongkan, password acak dicetak sekali di log:
+### 3. Tambahkan domain di Nginx Proxy Manager
+
+1. Arahkan DNS domain (record **A**) ke IP VPS.
+2. Di NPM, buka **Hosts → Proxy Hosts → Add Proxy Host**:
+   - **Domain Names**: domain Anda, misalnya `harga.domainanda.com`
+   - **Scheme**: `http`
+   - **Forward Hostname / IP**: `pm-web`
+   - **Forward Port**: `80`
+   - Centang **Block Common Exploits**
+3. Di tab **SSL**: pilih **Request a new SSL Certificate**, lalu centang **Force SSL** dan **HTTP/2 Support**. Simpan.
+
+Buka `https://harga.domainanda.com`, lalu klik **Admin**. Login dengan `ADMIN_USERNAME` / `ADMIN_PASSWORD` dari `.env`. Kalau `ADMIN_PASSWORD` dikosongkan, password acak dicetak sekali di log:
 
 ```bash
 docker compose logs api | grep auth
@@ -63,7 +87,11 @@ docker compose logs api | grep auth
 
 `ADMIN_*` hanya dipakai **sekali**, saat database masih kosong. Setelah itu ganti password dari menu **Pengaturan**.
 
-Jangan lupa buka port di firewall, misalnya: `sudo ufw allow 8650/tcp`.
+`COOKIE_SECURE=true` membuat cookie login hanya dikirim lewat HTTPS. Jadi login hanya bisa dilakukan lewat `https://`, dan itu memang yang diinginkan.
+
+### 4. (Disarankan) Tolak akses lewat IP di NPM
+
+Kalau NPM dibuka lewat `http://IP-VPS`, NPM menampilkan halaman bawaannya. Untuk menolaknya, buka **Settings → Default Site** di NPM, lalu pilih **No Response (444)** atau **404 Page**.
 
 ## Menyiapkan WhatsApp (Fonnte)
 
@@ -106,6 +134,8 @@ docker compose up -d --build
 ```
 
 Tabel database dibuat dan diperbarui otomatis saat API start. Data tidak hilang.
+
+Upload manual (zip + SCP): ekstrak zip baru di atas folder lama dengan `unzip -o price-monitor.zip`. File `.env` Anda tidak tertimpa karena tidak ada di dalam zip. Setelah itu jalankan `docker compose up -d --build`.
 
 ## Akses database (DBeaver)
 
